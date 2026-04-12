@@ -14,7 +14,6 @@ Actualizado con feedback del equipo completo (12 especialistas) — Abril 2026.
 | 0.3 Identidad de Marca | **Completo** | 5 nombres propuestos (Praxis recomendado), brand guidelines, GTM |
 | 0.4 Arquitectura Técnica | **Completo** | Diagramas Mermaid, data model, API design, infra |
 | 0.4 CI/CD Pipeline | **Salteado** | Diseñado en el doc pero no se creó `.github/workflows/` |
-| 0.4 Monorepo `sdk/` package | **Salteado** | Directorio `packages/sdk/` planeado pero no creado |
 | **0.1 Regulación fiat onramp** | **Falta** | Sección 9 propuesta por Legal: regulación de servicios de pago, money transmission, chargebacks, currencies permitidas (NO USD, NO BRL, solo EUR vía PSP→USDC) |
 | **0.2 Costos fiat onramp** | **Falta** | Sección 2.8 propuesta por Finanzas: PSP platform fees, fraud monitoring, chargeback liability, KYC incremental (+$6,300/mes en Phase 3) |
 | **0.3 Vocabulary guidelines** | **Falta** | Sección 3.6 propuesta por Copywriter: tabla DO/DON'T de términos crypto, regla "fiat es el camino default" |

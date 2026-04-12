@@ -89,6 +89,7 @@
 | B10 | Admin Panel + RBAC | P1 | XL | — | Repo separado, market mgmt, KYC review, audit log |
 | B11 | Payment Service: withdrawal flow | P1 | M | S4, S6 | Retiros con approval queue, período retención 14 días |
 | B12 | Chargeback protection | P1 | S | S4 | 3DS obligatorio, clausula ToS |
+| B34 | Intercom Identity Verification (JWT) | P2 | S | B3 | Generar JWT en backend con secret Intercom, pasar al widget. Requiere auth dual activa |
 
 ### Sprint 5 — UX + testing + launch prep
 
