@@ -729,3 +729,102 @@ Todos los registros de compliance deben mantenerse por un minimo de:
 ---
 
 *Documento preparado como analisis preliminar para Phase 0.1. Sujeto a revision y actualizacion continua conforme evolucionen las regulaciones aplicables y se definan decisiones de jurisdiccion y estructura final.*
+
+---
+
+## 9. Regulacion de Servicios de Pago y Fiat Onramp
+
+### 9.1 Arquitectura Regulatoria del Fiat Onramp
+
+**Principio fundamental:** Praxis NO debe tocar fondos fiat directamente. Todo flujo fiat debe ser intermediado por PSPs licenciados (MoonPay, Transak, u otros) que conviertan fiat a USDC antes de que los fondos ingresen al ecosistema de la plataforma.
+
+```
+Flujo obligatorio:
+  Usuario (tarjeta/banco) → PSP licenciado → Conversion a USDC → Wallet Praxis
+
+Flujo PROHIBIDO:
+  Usuario (tarjeta/banco) → Cuenta bancaria de Praxis → Plataforma
+```
+
+**Justificacion:** Si Praxis recibe, custodia, o transmite fondos fiat (incluso transitoriamente), se activan obligaciones de Money Transmitter (EE.UU./FinCEN), Electronic Money Institution (EU/PSD2), o Institucion de Pago (Brasil/BCB) que requieren licencias especificas, capital regulatorio, y supervision continua. Al interactuar solo con USDC post-conversion, Praxis mantiene su clasificacion como plataforma crypto-native.
+
+### 9.2 Requisitos para PSPs
+
+Los PSPs integrados deben cumplir con:
+
+| Requisito | Detalle |
+|---|---|
+| **Licencias** | El PSP debe tener licencias de money transmission / EMI en las jurisdicciones donde opera |
+| **KYC del PSP** | El PSP realiza su propio KYC al usuario. Praxis mantiene sus propios tiers independientemente |
+| **Matching de identidad** | La identidad verificada por el PSP debe coincidir con la registrada en Praxis. Depositos de terceros no permitidos |
+| **MCC Code** | Verificar que el PSP no clasifique las transacciones bajo MCC 7995 (gambling). Preferir "financial services" o "digital assets" |
+| **Chargeback handling** | Acuerdo contractual con el PSP que defina responsabilidades en caso de chargebacks |
+| **Jurisdicciones cubiertas** | El PSP debe geo-bloquear las mismas jurisdicciones que Praxis |
+| **Reportes** | El PSP debe proveer reportes de transacciones para compliance AML de Praxis |
+
+### 9.3 Monedas Fiat Soportadas y Riesgo Regulatorio
+
+| Moneda | Riesgo | Decision MVP | Justificacion |
+|---|---|---|---|
+| **USD** | CRITICO | NO INCLUIR | Aceptar USD contradice la estrategia de zero-nexo con EE.UU. (Seccion 3.1.1). Depositos en USD crean argumento de nexo para CFTC/FinCEN |
+| **EUR** | ALTO | INCLUIR CON RESTRICCIONES | Solo via PSP que convierta a USDC. No mantener balances en EUR. No marketing dirigido a EU salvo que se obtenga licencia MiCA/CASP |
+| **BRL** | ALTO | NO INCLUIR EN MVP | Contradice la recomendacion de geo-blocking de Brasil (Seccion 3.1.5). Aceptar BRL constituye "soliciting" al mercado brasileno y activa regulacion CVM/BCB |
+
+### 9.4 Proteccion contra Chargebacks
+
+#### 9.4.1 Controles Tecnicos
+
+- **3D Secure (3DS2) obligatorio** en todas las transacciones con tarjeta
+- **Periodo de espera post-deposito**: fondos depositados via tarjeta no son retirables por 14 dias calendario
+- **Limites de deposito escalonados**: primer deposito maximo $200, incrementa con historial
+- **Device fingerprinting y velocity checks** para detectar fraude
+
+#### 9.4.2 Controles Legales (agregar a ToS seccion 7)
+
+Todo deposito fiat es convertido a USDC al tipo de cambio vigente. Una vez convertido, es final e irreversible a nivel de la plataforma. Los fondos depositados via tarjeta estan sujetos a un periodo de retencion de 14 dias durante el cual no pueden ser retirados, pero si pueden usarse para trading. La iniciacion de un chargeback fraudulento resulta en suspension de cuenta, confiscacion de balances, y reporte a servicios de prevencion de fraude. No se aceptan depositos desde instrumentos de pago que no pertenezcan al titular de la cuenta.
+
+#### 9.4.3 Controles Operativos
+
+- Mantener chargeback ratio por debajo de 0.5%
+- Proceso de representment automatizado con evidencia de 3DS, IP match, actividad post-deposito
+- Provisionar 5-10% del volumen de depositos fiat como reserva para chargebacks
+
+### 9.5 Money Transmission: Analisis por Jurisdiccion
+
+| Jurisdiccion | Riesgo MT | Mitigacion | Licencia requerida si se toca fiat |
+|---|---|---|---|
+| **EE.UU.** | CRITICO | Zero-nexo. No aceptar USD. PSP maneja todo fiat | MSB/MTL (estado por estado) - NO VIABLE |
+| **EU** | ALTO | PSP convierte a USDC. Praxis no custodia EUR | EMI o PI bajo PSD2 si se custodia EUR |
+| **Brasil** | ALTO | No aceptar BRL en MVP | Instituicao de Pagamento (BCB) |
+| **UK** | ALTO | Geo-blocking UK. No aceptar GBP | PI/EMI bajo PSR 2017 |
+| **Panama** | BAJO | Regulacion MT limitada | No aplica actualmente |
+| **BVI** | MODERADO | Payment Systems Act podria aplicar | Evaluar con counsel local |
+
+### 9.6 Disclaimer de Procesamiento de Pagos (agregar a ToS seccion 4.2)
+
+Los servicios de deposito y retiro de fondos fiat son proporcionados por proveedores de servicios de pago terceros independientes ("PSPs"). La Plataforma NO es un servicio de pago, transmisor de dinero, institucion de dinero electronico, ni institucion de pago en ninguna jurisdiccion. La Plataforma no recibe, custodia, ni transmite fondos en moneda fiduciaria. Los PSPs son entidades independientes con sus propios terminos de servicio, politicas de privacidad, y requisitos regulatorios.
+
+---
+
+## 10. Estructura Legal para Multibranding
+
+### 10.1 Modelo Operativo
+
+El esquema de multiples marcas sobre un mismo engine tecnologico requiere separacion juridica para aislar riesgo regulatorio, permitir reglas de compliance diferenciadas, y proteger marcas de problemas de otras marcas del portfolio.
+
+### 10.2 Estructura Recomendada
+
+Cada marca debe operarse a traves de una entidad juridica separada (subsidiary de la OpCo o de la Fundacion):
+
+| Componente | Requisito |
+|---|---|
+| **Entidad propia** | Cada marca = una entity |
+| **ToS y Privacy Policy propios** | Adaptados a jurisdiccion target |
+| **Licencias independientes** | La licencia la obtiene la entity de esa marca |
+| **Compliance officer por marca** | O procedures diferenciados documentados |
+| **Separacion de datos** | Datos de usuarios logicamente separados |
+| **Contrato de licencia de tecnologia** | La OpCo licencia el engine a cada entity via Technology License Agreement |
+
+### 10.3 Riesgo Principal: Piercing the Corporate Veil
+
+Si un regulador determina que las multiples marcas son una unica operacion (mismos directores, cuentas, oficina), puede levantar el velo societario. Para evitar esto: directores distintos (al menos parcialmente), cuentas bancarias/wallets separadas, decision-making documentado, board minutes independientes, contratos inter-company a precios de mercado.

@@ -1324,3 +1324,156 @@ La siguiente tabla resume los componentes ya implementados y su estado respecto 
 *Documento preparado como parte de Phase 1 -- Design & UX.*
 *Documento anterior: Phase 1.3 -- Component Library.*
 *Proximo documento: Phase 1.5 -- API Design.*
+
+---
+
+## 7. Flujos Fiat (Onboarding Dual y Deposito)
+
+### 7.1 Flow 1B: Onboarding Usuario Fiat
+
+**Objetivo:** Landing a primer trade en menos de 3 minutos, sin tocar crypto.
+
+```mermaid
+flowchart TD
+    A[Landing Page /] --> B[CTA: Start Trading]
+    B --> C[Auth Modal]
+    
+    C --> D[Continue with Google]
+    C --> E[Continue with Email]
+    C --> F[Connect Wallet - secundario]
+    
+    D --> G[Google OAuth flow]
+    E --> H[Email + password]
+    G --> I[Account created - fiat mode]
+    H --> I
+    I --> J{First visit?}
+    J -- Yes --> K[Tutorial Overlay 3 steps - fiat version]
+    K --> K1[Step 1: Browse markets and predictions]
+    K1 --> K2[Step 2: Buy YES or NO with your balance]
+    K2 --> K3[Step 3: Track positions in Portfolio]
+    K3 --> L[Dismiss tutorial]
+    J -- No --> L
+    L --> M[Markets Explorer]
+    M --> N[Click market -> Market Detail]
+    N --> O[Trading Panel: user clicks Buy]
+    O --> P{Has balance?}
+    P -- No --> Q[Inline prompt: Add funds to trade]
+    Q --> R[Deposit flow - card via PSP]
+    R --> S[Balance updated]
+    S --> T[Return to trade]
+    P -- Yes --> T
+    T --> U[Review summary]
+    U --> V[Confirm Buy - no wallet signature needed]
+    V --> W[Order submitted via backend proxy]
+    W --> X[First trade confirmed!]
+```
+
+**Diferencias con Flow 1 (crypto):**
+- No hay wallet connect, ni SIWE sign, ni approval flow
+- El balance se muestra en la moneda local del usuario, no USDC
+- "Add Funds" reemplaza "Get USDC"
+- Las confirmaciones de trade son instantaneas (proxy wallet firma internamente)
+
+**Conteo de pasos (happy path):**
+
+| # | Paso | Tiempo estimado | Acumulado |
+|---|---|---|---|
+| 1 | Landing -> Click "Start Trading" | 5s | 0:05 |
+| 2 | Auth modal -> "Continue with Google" | 3s | 0:08 |
+| 3 | Google OAuth (popup) | 8s | 0:16 |
+| 4 | Tutorial overlay (3 pasos, skip disponible) | 15s | 0:31 |
+| 5 | Browse markets -> click uno | 15s | 0:46 |
+| 6 | Click "Buy YES" en Trading Panel | 5s | 0:51 |
+| 7 | Prompt "Add Funds" -> click | 3s | 0:54 |
+| 8 | Select amount (quick button) | 4s | 0:58 |
+| 9 | PSP widget: card details | 40s | 1:38 |
+| 10 | 3DS challenge (si aplica) | 15s | 1:53 |
+| 11 | Deposit confirmation -> "Start Trading" | 3s | 1:56 |
+| 12 | Enter amount + review + confirm | 12s | 2:08 |
+| 13 | Order confirmed | 2s | **2:10** |
+
+**Resultado: ~2 minutos 10 segundos en happy path. Cumple el target de 3 minutos con margen.**
+
+### 7.2 Flow 5A: Deposito Fiat (tarjeta/bank transfer)
+
+```mermaid
+flowchart TD
+    A[User triggers deposit] --> B{KYC tier sufficient?}
+    B -- No --> C[KYC prompt: verify identity]
+    C --> D[Sumsub KYC flow]
+    D --> E{KYC approved?}
+    E -- No --> F[KYC pending: banner with estimated time]
+    E -- Yes --> G[Select deposit method]
+    B -- Yes --> G
+    
+    G --> H[Select amount + quick amounts]
+    H --> I[Show fee breakdown]
+    I --> J[Open PSP widget - iframe modal]
+    
+    J --> K{PSP result}
+    K -- Success --> L[Backend receives webhook]
+    L --> M[Credit user balance]
+    M --> N[Confirmation screen: funds added]
+    N --> O[Auto-return to trading panel]
+    
+    K -- Card declined --> P[Error: Card declined]
+    P --> Q[Suggest: try another card or bank transfer]
+    Q --> J
+    
+    K -- Timeout --> R[Error: Payment timed out]
+    R --> S[Auto-retry or manual retry]
+    S --> J
+    
+    K -- User cancelled --> T[Return to amount screen]
+    T --> H
+```
+
+### 7.3 Abstraccion de Moneda
+
+El sistema interno opera en USDC. La capa de presentacion se adapta segun el tipo de usuario:
+
+| Concepto | Usuario Fiat | Usuario Crypto |
+|---|---|---|
+| **Moneda mostrada** | Moneda local (EUR, etc.) | USDC |
+| **Balance label** | "Balance: EUR 48.75" | "Balance: 48.75 USDC" |
+| **Deposito** | "Add Funds" (tarjeta/bank) | "Deposit USDC" (wallet) |
+| **Retiro** | "Withdraw to bank" | "Withdraw USDC to wallet" |
+| **Approval flow** | NO existe (backend opera) | Si: USDC approval tx |
+| **Wallet address** | NO visible | Visible en header + portfolio |
+| **Network info** | NO visible | "Polygon" badge |
+
+**Implementacion:** Hook `useCurrency()` centralizado que retorna symbol, prefix, format function segun `user.authType`. Un solo set de componentes, la moneda se resuelve por contexto.
+
+### 7.4 Error States Fiat
+
+| Error | Ubicacion | Tipo UI | Accion primaria |
+|---|---|---|---|
+| Card declined | Modal deposito | Inline error | Try Another Card |
+| PSP timeout | Modal deposito | Inline error | Try Again |
+| KYC required | Trading Panel / Deposit | Modal | Verify Now |
+| KYC pending | Trading Panel / Deposit | Banner inline | Details |
+| KYC rejected | Modal | Full-screen error | Contact Support |
+| PSP unavailable | Modal deposito | Inline error | Try Later / Alt method |
+| Deposit limits reached | Modal deposito | Inline warning | Upgrade tier |
+| 3DS failed | Modal deposito (iframe) | Inline error | Retry |
+
+### 7.5 Componentes Nuevos para Fiat
+
+| Componente | Ubicacion | Responsabilidad |
+|---|---|---|
+| `<AuthModal />` | `components/auth/AuthModal.tsx` | Orquesta ambos flujos de autenticacion |
+| `<EmailAuthFlow />` | `components/auth/EmailAuthFlow.tsx` | Formulario email/pass + OAuth |
+| `<FundingModal />` | `components/funding/FundingModal.tsx` | Iframe PSP para depositos fiat |
+| `<CurrencyAmount />` | `components/ui/CurrencyAmount.tsx` | Renderiza montos con simbolo correcto |
+| `<BrandProvider />` | `providers/BrandProvider.tsx` | Contexto de marca + CSS variables |
+| `<BalanceBanner />` | `components/trading/BalanceBanner.tsx` | Banner contextual: fiat vs crypto deposit CTA |
+
+### 7.6 Metricas de Funnel Fiat
+
+| Metrica | Target |
+|---|---|
+| Time-to-first-trade (fiat path) | < 3 minutos |
+| Drop-off: Auth modal -> Account created | < 20% |
+| Drop-off: Account -> First deposit | < 40% |
+| Drop-off: Deposit started -> Deposit completed | < 30% |
+| Drop-off: Deposit completed -> First trade | < 15% |

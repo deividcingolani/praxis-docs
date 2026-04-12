@@ -114,9 +114,19 @@ Variante estilizada de "mercado". Directo, transparente, latinoamericano de raiz
 
 **Recomendacion:** Tagline #1 para comunicacion general. Tagline #2 para campanas de awareness. Tagline #3 para conversion y performance marketing.
 
-### 2.2 Elevator Pitch (30 segundos)
+### 2.2 Elevator Pitches (30 segundos cada uno)
+
+#### Pitch general (investors, press, partners)
 
 > "Somos una plataforma de mercados de prediccion donde cualquier persona puede operar sobre eventos del mundo real -- elecciones, deportes, economia, cultura. En lugar de opinar en redes sociales, nuestros usuarios ponen skin in the game: compran y venden contratos que pagan si un evento sucede. Esto genera las probabilidades mas precisas del mercado, en tiempo real. A diferencia de las apuestas tradicionales, aca operas contra el mercado, no contra la casa. Y a diferencia de las plataformas existentes, estamos construidos para ser accesibles, transparentes y cumplir con regulaciones desde el dia uno."
+
+#### Pitch para audiencia betting/gaming (ads, influencers, landing pages)
+
+> "Imaginate que podes ganar plata prediciendo quien gana la eleccion, quien gana el clasico, o si Bitcoin pasa los 100K. Sin casa en contra, sin crypto, sin complicaciones. Te registras con tu email, depositas con tarjeta en 30 segundos, y operas contra el mercado -- no contra una banca que te pone las cuotas en contra. Aca tu conocimiento es tu ventaja. Praxis: trade what you know."
+
+#### Pitch para audiencia crypto-native (Twitter, Discord, conferences)
+
+> "Prediction markets on-chain, con la UX que Polymarket deberia tener. Order book hibrido, charts profesionales, API para bots, y la transparencia de contratos verificables en Polygon. Pero ademas, fiat onramp desde dia uno para que puedas traer a tus amigos que no tienen wallet. Liquidity + accesibilidad = mercados mas profundos para todos."
 
 ### 2.3 Value Proposition Canvas
 
@@ -243,6 +253,17 @@ Mono: 14px / 20px line-height / 0em tracking (datos financieros)
 | Discord | Cercano, coloquial, tecnico cuando corresponde |
 | Email / notificaciones | Claro, actionable, respetuoso del inbox |
 | Landing page / marketing | Aspiracional pero honesto, con proof points |
+| TikTok / Instagram Reels | Directo, visual, competitivo. "Mira cuanto gane prediciendo X" (sin prometer retornos) |
+| Ads para audiencia betting | Directo, comparativo con casas de apuestas. "Sin banca en contra" como hook. Evitar jerga crypto |
+| WhatsApp / Telegram (LATAM) | Informal, cercano, con datos concretos. Alertas de mercado tipo "tip" |
+
+#### Nota sobre audiencia betting/gaming
+
+El publico proveniente del mundo betting (Blaze, Stake, Bet365) responde a un tono mas directo y competitivo que el publico crypto o analista. Ajustes especificos:
+- **SI usar:** "operar", "ganar", "mercado", "ventaja", "edge", "contra el mercado"
+- **NO usar:** "apostar", "jugarse", "suerte", "jackpot", "banca" (como algo positivo)
+- **Frame principal:** "trading de eventos" -- posiciona la actividad como skill-based, no luck-based
+- **Diferenciador clave en messaging:** "Aca no jugas contra la casa. Operas contra otros que piensan distinto a vos."
 
 ### 3.4 Principios de Marca
 
@@ -289,6 +310,7 @@ Mono: 14px / 20px line-height / 0em tracking (datos financieros)
 | 5 | Usar lenguaje inclusivo (vos/tu segun region, genero neutro cuando sea posible) | "Crea tu prediccion" en vez de "Los traders deben..." |
 | 6 | Citar fuentes de resolucion antes de que se necesiten | "Este mercado se resuelve segun datos oficiales de [fuente]" |
 | 7 | Mostrar el "por que" detras del producto | "Agregamos stops porque la comunidad lo pidio (342 votos)" |
+| 8 | Presentar el camino fiat como default en toda comunicacion publica | "Crea tu cuenta y deposita con tarjeta" como primer CTA; "Usas crypto? Conecta tu wallet" como alternativa |
 
 #### DON'Ts
 
@@ -302,6 +324,36 @@ Mono: 14px / 20px line-height / 0em tracking (datos financieros)
 | 6 | No usar urgencia artificial ("ULTIMO DIA", "NO TE LO PIERDAS") | Erosiona confianza. Los mercados tienen deadlines reales; no inventamos falsos |
 | 7 | No comparar agresivamente con competidores por nombre | Diferenciamos por propuesta de valor, no por ataque |
 | 8 | No generar FOMO con resultados de otros usuarios | "Juan gano $10k" es manipulativo. "El mercado movio $2M en volumen" es informativo |
+| 9 | No usar terminologia crypto como default en la UI general | Los usuarios de betting/gaming no saben que es una wallet, gas, o USDC. Estas palabras van en flujos secundarios o tooltips. Ver seccion 3.6 |
+
+### 3.6 Vocabulary Guidelines (Audiencia Dual)
+
+> Praxis tiene dos puertas de entrada: usuarios crypto-native y usuarios que vienen del mundo de betting, gaming o analisis. El vocabulario de la interfaz debe funcionar para ambos sin alienar a ninguno.
+
+#### Regla de oro
+**El camino por defecto es el camino fiat.** La terminologia crypto aparece solo cuando el usuario la elige explicitamente (conectar wallet, depositar USDC) o cuando esta en un flujo avanzado.
+
+#### Tabla DO / DON'T
+
+| Contexto | DON'T (evitar en UI general) | DO (usar en su lugar) | Excepcion |
+|---|---|---|---|
+| Autenticacion | "Conectar wallet" como CTA unico | "Crear cuenta" / "Iniciar sesion" (primario) + "Conectar wallet" (secundario) | Flujo crypto explicito |
+| Saldo del usuario | "USDC balance", "tokens" | "Tu saldo", "disponibles" | Detalle de transaccion crypto |
+| Deposito | "Fund your wallet", "bridge funds" | "Agregar fondos", "Depositar con tarjeta" | — |
+| Comisiones | "Gas fees", "network fee" | "Comision de red" (si aplica) o no mostrar | FAQ tecnico |
+| Tecnologia | "Blockchain", "on-chain", "smart contract" | "Verificable publicamente", "contrato automatico" | Seccion "Como funciona" |
+| Contratos | "Mint shares", "outcome tokens" | "Comprar posicion", "tu prediccion" | Docs para desarrolladores |
+| Resolucion | "Oracle", "UMA" | "Fuente de verificacion", "datos oficiales" | Docs tecnicos |
+| Verificacion | "KYC" | "Verificacion de identidad" | Comunicacion interna |
+| Red | "Polygon", "L2", "Ethereum" | No mencionar. Es infraestructura invisible | Docs para desarrolladores |
+| Trading avanzado | "Slippage", "AMM" | "Variacion de precio", "mercado automatico" | Modo pro con tooltip |
+
+#### Principios de redaccion para audiencia dual
+
+1. **Test de la persona 3:** Si un estudiante de 22 anos que usa fintech pero nunca toco crypto no entiende el texto en 3 segundos, hay que reescribirlo.
+2. **Progresividad:** Informacion tecnica disponible para quien la busque (tooltips, seccion "Avanzado", FAQ), pero nunca como barrera de entrada.
+3. **Neutralidad de via:** No decir "depositar en crypto" como si fuera el default. Tarjeta y crypto son opciones paralelas, con tarjeta como primera visible.
+4. **Consistencia interna:** Si en un lugar decimos "saldo", no decir "balance" en otro. Mantener un glosario unico.
 
 ---
 
@@ -369,7 +421,47 @@ Mono: 14px / 20px line-height / 0em tracking (datos financieros)
 
 ---
 
-### 4.3 Persona 3: Casual Predictor
+### 4.3 Persona 3: Bettor / Gamer Activo (TARGET PRIMARIO FIAT)
+
+| Campo | Detalle |
+|---|---|
+| **Nombre ficticio** | Nico G. |
+| **Edad** | 20-32 anos |
+| **Ubicacion** | Buenos Aires / Lima / CDMX / Sao Paulo |
+| **Ocupacion** | Empleado, freelancer, o estudiante avanzado |
+| **Ingreso disponible para trading** | $100-2,000 USD/mes en betting |
+| **Nivel tecnico** | Medio. Usa apps de betting (Blaze, Stake, Bet365, Codere), billeteras digitales (Mercado Pago, MACH), pero no crypto |
+
+**Motivacion:** Ya gasta plata en betting deportivo y juegos online. Esta frustrado con las casas de apuestas porque "la casa siempre gana". Busca algo donde su conocimiento real (deportes, politica, cultura) le de ventaja. Le atrae la idea de operar contra el mercado, no contra la casa. Quiere depositar rapido con tarjeta y empezar.
+
+**Pain Points:**
+- En casas de apuestas las cuotas estan sesgadas a favor de la casa (overround 10-15%)
+- Plataformas como Blaze/Stake tienen reputacion dudosa y riesgo de cierre
+- No entiende crypto ni quiere aprender -- quiere depositar con tarjeta y listo
+- Polymarket y similares requieren wallet, USDC, gas -- barrera total
+- Quiere empezar con poco ($5-20) y escalar si le va bien
+- Le importa poder retirar facil y rapido
+
+**Canales:**
+- TikTok: contenido de betting, "hice X plata con esta estrategia", gambling content
+- Instagram: tipsters, cuentas de analisis deportivo, memes de apuestas
+- YouTube: reviews de casas de apuestas, estrategias, streamers de betting
+- Twitch: streamers de poker, slots, betting en vivo
+- WhatsApp/Telegram: grupos de tips deportivos, senales de apuestas
+- Twitter/X: consumo pasivo de deportes y politica
+
+**Mensaje clave para esta persona:** "Aca no jugas contra la casa. Operas contra el mercado. Deposita con tarjeta en 30 segundos, empeza desde $5."
+
+**Flujo de activacion optimizado:**
+1. Registro con email o Google (30 seg)
+2. Ve mercados activos antes de depositar (genera deseo)
+3. Click en "Operar" → prompt de deposito con tarjeta (widget inline, 60 seg)
+4. "Quick bet" simplificado: "Si / No + monto" (no order book completo)
+5. Primer trade completado en < 3 minutos desde el registro
+
+---
+
+### 4.4 Persona 4: Casual Predictor
 
 | Campo | Detalle |
 |---|---|
@@ -396,7 +488,7 @@ Mono: 14px / 20px line-height / 0em tracking (datos financieros)
 - WhatsApp: grupos de amigos donde discute predicciones
 - YouTube: videos educativos, reaction content
 
-**Mensaje clave para esta persona:** "Pone tu conocimiento a prueba. Empeza con $5, sin necesidad de saber nada de crypto."
+**Mensaje clave para esta persona:** "Pone tu conocimiento a prueba. Registrate con email, deposita con tarjeta, empeza con $5."
 
 ---
 
@@ -519,16 +611,42 @@ Landing page con waitlist que ofrece:
 | 26-50 | $100 USD en credito + merchandise exclusivo |
 | 50+ | Invitacion a "Founders Circle": call mensual con el equipo |
 
-#### Metricas Objetivo
+### 5.5 Canales de Adquisicion Pagos (Pre-launch + Launch)
+
+Con fiat onramp desde MVP, la audiencia no necesita ser crypto-nativa. Esto abre canales de paid acquisition que antes no eran viables:
+
+| Canal | Presupuesto pre-launch | Presupuesto mes 1 post-launch | Objetivo | CAC target |
+|---|---|---|---|---|
+| **Meta Ads (IG + FB)** | $3K (test de audiencias) | $8K | Registros de bettors, 20-32 anos, intereses: betting, sports, poker | $8-12/registro |
+| **TikTok Ads** | $2K (test de creatives) | $6K | Registros de audiencia gaming/betting, 18-28 anos | $5-10/registro |
+| **Google Ads (SEM)** | $0 | $4K | Captura de intencion: "predicciones deportivas", "apostar elecciones", "alternativa a Blaze" | $12-20/registro |
+| **YouTube pre-roll** | $0 | $2K | Awareness en canales de betting, poker, sports analysis | $15-25/registro |
+| **Total** | **$5K** | **$20K** | - | **Blended: <$12** |
+
+#### Programa de Influencers (ampliado)
+
+| Tipo | Cantidad | Plataforma | Compensacion | Timing |
+|---|---|---|---|---|
+| Crypto/fintech (5K-50K seg) | 15 | Twitter/X, YouTube | $200-500 + credito de trading | Pre-launch |
+| Betting/tipsters (10K-100K seg) | 15 | TikTok, Instagram, YouTube | $300-800 + rev share de referidos | Launch |
+| Sports analysts LATAM (5K-50K seg) | 10 | Twitter/X, Instagram | $200-500 + credito de trading | Launch |
+| Streamers gaming/poker (5K-50K seg) | 5 | Twitch, YouTube | $500-1K + sponsorship mensual | Post-launch |
+| **Total influencers:** | **45** | - | **Budget: $15-25K** | - |
+
+#### Metricas Objetivo (actualizadas)
 
 | Metrica | Target pre-launch |
 |---|---|
-| Waitlist signups | 10,000 en 3 meses |
+| Waitlist signups | 10,000 en 3 meses (50% via orgánico, 30% referidos, 20% paid) |
 | Referral rate | 30%+ de signups vienen por referido |
 | Discord members | 3,000 |
 | Twitter followers | 5,000 |
+| TikTok followers | 3,000 |
+| Instagram followers | 2,000 |
 | Telegram suscriptores | 2,000 |
 | Email open rate (updates) | >40% |
+| Waitlist → registro en launch (D1) | >25% |
+| % registros via email/Google vs wallet | Target: 60% email, 40% wallet |
 
 ---
 
@@ -645,6 +763,48 @@ Landing page con waitlist que ofrece:
 | DAU/MAU ratio | >25% |
 | Retention D7 | >40% |
 | Retention D30 | >20% |
+
+---
+
+## 7. Estrategia de Multibranding
+
+### 7.1 Racional
+
+La arquitectura multi-tenant por configuracion (definida en PLAN.md seccion 0.4) permite lanzar frontends con marcas diferentes para audiencias diferentes, compartiendo el mismo order book y backend. Esto es una ventaja competitiva clave: podemos hablarle al bettor y al crypto-native con lenguaje, tono y canales completamente diferentes sin fragmentar la liquidez.
+
+### 7.2 Marcas Propuestas
+
+| Marca | Audiencia | Tono | Canales principales | Prioridad |
+|---|---|---|---|---|
+| **Praxis** | Crypto-natives, traders, analistas, instituciones | Profesional, data-driven, fintech | Twitter/X, Discord, PR crypto, conferences | Launch (MVP) |
+| **[Marca Gaming TBD]** | Bettors, gamers, audiencia Blaze/Stake | Directo, competitivo, entretenimiento | TikTok, Instagram, YouTube, Twitch, tipsters | Post-validacion (mes 2-3 post-launch) |
+| **[Marca LATAM TBD]** | Audiencia LATAM masiva, mobile-first | Cercano, local, accesible | WhatsApp, Telegram, influencers locales, Meta Ads | Fase 3 (evaluacion por metricas) |
+
+### 7.3 Implementacion
+
+**Fase 1 (Launch):** Solo Praxis. Una marca, dos flujos de onboarding (crypto + fiat). El branding es lo suficientemente flexible para atraer ambas audiencias.
+
+**Fase 2 (Mes 2-3 post-launch):** Si las metricas muestran que >40% de los usuarios entran por fiat y vienen de betting, lanzar la segunda marca con frontend diferenciado:
+- Paleta de colores mas vibrante/gaming (vs. el navy/teal profesional de Praxis)
+- UX simplificada: "Quick bet" como modo default, sin order book visible
+- Mercados curados para deportes y cultura pop
+- Landing pages y ads especificos para esta audiencia
+
+**Fase 3 (Evaluacion):** Marca LATAM solo si hay traccion organica significativa en mercados especificos (ej: elecciones Argentina, Liga MX, Brasileirao).
+
+### 7.4 KPIs para Decision de Segunda Marca
+
+| Metrica | Threshold para lanzar segunda marca |
+|---|---|
+| % usuarios fiat vs crypto | >40% fiat |
+| Retention D30 de usuarios fiat | >15% |
+| CAC de usuarios fiat via ads | <$15 |
+| Volumen mensual de usuarios fiat | >$100K |
+| Feedback cualitativo | Usuarios fiat piden "algo mas simple/divertido" |
+
+### 7.5 Riesgo Principal
+
+Fragmentacion de esfuerzo de marketing. Mitigacion: la segunda marca se lanza solo con un equipo dedicado (al menos 1 persona de marketing full-time para esa marca) y un presupuesto separado de ads ($10K/mes minimo).
 
 ---
 

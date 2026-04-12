@@ -119,6 +119,71 @@ graph TB
 | **Indexer Worker** | Listens to on-chain events (Transfer, TradeSettled, ConditionResolution) and syncs to DB |
 | **Price Aggregation Worker** | Aggregates tick-level trades into OHLCV candles (1m, 5m, 15m, 1h, 1d) |
 | **Resolution Worker** | Monitors UMA oracle for resolution outcomes, triggers payout |
+| **Payment Service** | Abstraction layer for deposits/withdrawals. Implements PaymentProvider interface for crypto and fiat paths |
+| **Balance Service** | Atomic balance operations: credit, debit, lock, unlock. All mutations use SELECT FOR UPDATE |
+| **Webhook Processing Worker** | Procesa webhooks de PSPs (MoonPay, Transak), acredita balances |
+| **Reconciliation Cron** | Verifica consistencia entre PSPs y balances internos cada 15 min |
+
+### Payment Provider Architecture
+
+El motor de trading opera en **unidades internas normalizadas**, agnóstico al origen del dinero. La capa de pagos abstrae las diferencias entre crypto y fiat.
+
+```
+PaymentProvider (interface)
+├── initiateDeposit(user, amount, currency) → { redirectUrl?, widgetConfig?, pendingTxId }
+├── confirmDeposit(webhookPayload) → { userId, amount, currency, externalId }
+├── initiateWithdrawal(user, amount, currency, destination) → { pendingTxId }
+├── getTransactionStatus(externalId) → PaymentStatus
+└── getSupportedCurrencies() → Currency[]
+
+BalanceService (internal, NOT per-provider)
+├── credit(user, amount, currency, reason, referenceId) → Balance
+├── debit(user, amount, currency, reason, referenceId) → Balance
+├── lock(user, amount, currency) → Balance
+├── unlock(user, amount, currency) → Balance
+└── getBalance(user, currency?) → { available, locked }[]
+
+Implementations:
+├── CryptoProvider    → Polygon USDC (wallet connect, on-chain transfer)
+├── MoonPayProvider   → Fiat via MoonPay (card/bank → USDC conversion)
+├── TransakProvider   → Fiat via Transak (fallback PSP)
+└── [future]          → Additional PSPs as needed
+```
+
+**Flujo fiat**: Usuario deposita USD con tarjeta → PSP convierte a USDC → USDC llega a proxy wallet del usuario → balance interno se acredita. El usuario ve "USD" en la UI, nunca toca crypto directamente.
+
+**Flujo crypto**: Usuario conecta wallet → transfiere USDC a la plataforma → balance interno se acredita.
+
+### Multibranding Architecture
+
+La plataforma soporta múltiples marcas sobre un **único engine de liquidez** (order book compartido).
+
+```
+brand_config {
+  brand_id          -- identificador único
+  name              -- nombre de la marca
+  allowed_currencies -- [USD, USDC, BRL, ...]
+  allowed_markets   -- categorías o mercados específicos
+  kyc_required      -- nivel mínimo de KYC
+  payment_methods   -- [crypto, card, bank_transfer]
+  theme             -- colores, logo, tipografía
+  jurisdiction      -- reglas de geo-blocking específicas
+}
+```
+
+Cada request HTTP lleva un `brand_id` (vía header, subdomain, o config del frontend). El backend sirve la experiencia correcta sin código específico por marca. Añadir una marca nueva es configuración, no deploy.
+
+> **Nota:** En el MVP se implementa una sola marca (Praxis). La arquitectura queda preparada para multibranding sin implementarlo activamente.
+
+### Webhook Processing Architecture
+
+Los PSPs (MoonPay, Transak) notifican eventos de pago via webhooks HTTP. Para garantizar delivery confiable:
+
+1. **Ingestion**: El endpoint HTTP valida la firma del PSP, persiste el evento crudo en `webhook_events`, y encola en BullMQ. Responde 200 inmediatamente.
+2. **Processing**: El Webhook Processing Worker consume de la cola, actualiza `payment_transactions` y acredita `user_balances` via BalanceService.
+3. **Idempotencia**: Constraint UNIQUE en `(provider, external_id, event_type)` previene procesamiento duplicado.
+4. **Reintentos**: BullMQ con backoff exponencial (5 intentos). Dead Letter Queue para eventos que fallan persistentemente.
+5. **Reconciliacion**: Cron cada 15 minutos consulta APIs de PSPs y cruza contra registros locales para detectar webhooks perdidos.
 
 ---
 
@@ -242,14 +307,18 @@ CREATE TYPE market_status AS ENUM ('draft', 'active', 'paused', 'closed', 'resol
 CREATE TYPE order_side AS ENUM ('buy', 'sell');
 CREATE TYPE order_type AS ENUM ('limit', 'market');
 CREATE TYPE order_status AS ENUM ('open', 'partially_filled', 'filled', 'cancelled', 'expired');
+CREATE TYPE currency_type AS ENUM ('USDC', 'USD', 'EUR', 'BRL');
+CREATE TYPE payment_source AS ENUM ('crypto_wallet', 'fiat_card', 'fiat_bank_transfer', 'internal');
 
 -- ============================================================
 -- USERS
 -- ============================================================
 CREATE TABLE users (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    address         VARCHAR(42) NOT NULL UNIQUE,   -- Ethereum address (0x...)
+    address         VARCHAR(42) UNIQUE,            -- Ethereum address (0x...), NULL for fiat-only users
     email           VARCHAR(255),
+    auth_method     VARCHAR(20) NOT NULL DEFAULT 'wallet', -- 'wallet' | 'email' | 'google'
+    brand_id        VARCHAR(50) NOT NULL DEFAULT 'praxis',
     kyc_status      kyc_status NOT NULL DEFAULT 'none',
     kyc_tier        kyc_tier NOT NULL DEFAULT 'tier_0',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -257,6 +326,157 @@ CREATE TABLE users (
 );
 
 CREATE INDEX idx_users_address ON users (address);
+CREATE INDEX idx_users_brand ON users (brand_id);
+
+-- ============================================================
+-- USER BALANCES (multi-currency, agnóstico al origen)
+-- ============================================================
+CREATE TABLE user_balances (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    currency        currency_type NOT NULL DEFAULT 'USDC',
+    available       NUMERIC(18, 6) NOT NULL DEFAULT 0,  -- disponible para operar
+    locked          NUMERIC(18, 6) NOT NULL DEFAULT 0,  -- bloqueado en órdenes abiertas
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, currency),
+    CHECK (available >= 0),
+    CHECK (locked >= 0)
+);
+
+CREATE INDEX idx_user_balances_user ON user_balances (user_id);
+
+-- ============================================================
+-- PAYMENT TRANSACTIONS (registro de depósitos/retiros)
+-- ============================================================
+CREATE TABLE payment_transactions (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    type            VARCHAR(20) NOT NULL,              -- 'deposit' | 'withdrawal'
+    source          payment_source NOT NULL,
+    currency        currency_type NOT NULL,
+    amount          NUMERIC(18, 6) NOT NULL,
+    fee             NUMERIC(18, 6) NOT NULL DEFAULT 0,
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending' | 'completed' | 'failed'
+    external_id     VARCHAR(255),                      -- PSP transaction ID or tx_hash
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at    TIMESTAMPTZ
+);
+
+CREATE INDEX idx_payment_tx_user ON payment_transactions (user_id);
+CREATE INDEX idx_payment_tx_status ON payment_transactions (status);
+
+-- ============================================================
+-- BRAND CONFIGS (multibranding preparado)
+-- ============================================================
+CREATE TABLE brand_configs (
+    brand_id            VARCHAR(50) PRIMARY KEY,
+    name                VARCHAR(100) NOT NULL,
+    allowed_currencies  JSONB NOT NULL DEFAULT '["USDC"]',
+    allowed_categories  JSONB,                         -- NULL = all categories
+    kyc_required        kyc_tier NOT NULL DEFAULT 'tier_0',
+    payment_methods     JSONB NOT NULL DEFAULT '["crypto_wallet"]',
+    theme               JSONB,                         -- colores, logo URL, tipografía
+    jurisdiction        VARCHAR(10),                   -- reglas de geo-blocking
+    active              BOOLEAN NOT NULL DEFAULT true,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Seed default brand
+INSERT INTO brand_configs (brand_id, name, allowed_currencies, payment_methods)
+VALUES ('praxis', 'Praxis', '["USDC", "USD"]', '["crypto_wallet", "fiat_card"]');
+
+-- ============================================================
+-- WEBHOOK EVENTS (idempotency + audit trail de PSPs)
+-- ============================================================
+CREATE TABLE webhook_events (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    provider        VARCHAR(50) NOT NULL,
+    external_id     VARCHAR(255) NOT NULL,
+    event_type      VARCHAR(100) NOT NULL,
+    payload         JSONB NOT NULL,
+    signature_valid BOOLEAN NOT NULL,
+    processed       BOOLEAN NOT NULL DEFAULT false,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (provider, external_id, event_type)
+);
+
+-- ============================================================
+-- LEDGER ENTRIES (double-entry bookkeeping para auditoría)
+-- ============================================================
+CREATE TABLE ledger_entries (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    entry_type      VARCHAR(50) NOT NULL,
+    currency        currency_type NOT NULL,
+    debit           NUMERIC(18, 6) NOT NULL DEFAULT 0,
+    credit          NUMERIC(18, 6) NOT NULL DEFAULT 0,
+    balance_after   NUMERIC(18, 6) NOT NULL,
+    reference_type  VARCHAR(50),
+    reference_id    UUID,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (debit >= 0 AND credit >= 0),
+    CHECK (debit > 0 OR credit > 0)
+);
+
+CREATE INDEX idx_ledger_user ON ledger_entries (user_id, created_at);
+CREATE INDEX idx_ledger_reference ON ledger_entries (reference_type, reference_id);
+
+-- ============================================================
+-- USER AUTH METHODS (múltiples métodos por usuario)
+-- ============================================================
+CREATE TABLE user_auth_methods (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    method          VARCHAR(20) NOT NULL,
+    identifier      VARCHAR(255) NOT NULL,
+    verified        BOOLEAN NOT NULL DEFAULT false,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (method, identifier)
+);
+
+CREATE INDEX idx_auth_methods_user ON user_auth_methods (user_id);
+
+-- ============================================================
+-- PROXY WALLETS (Phase 2 — claves cifradas con AWS KMS)
+-- ============================================================
+CREATE TABLE proxy_wallets (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id             UUID NOT NULL REFERENCES users(id) UNIQUE,
+    address             VARCHAR(42) NOT NULL UNIQUE,
+    encrypted_key       BYTEA NOT NULL,
+    encrypted_dek       BYTEA NOT NULL,
+    kms_key_id          VARCHAR(255) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- ADMIN USERS (separados de traders, para el Admin Panel)
+-- ============================================================
+CREATE TABLE admin_users (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password_hash   TEXT NOT NULL,
+    google_id       VARCHAR(100) UNIQUE,
+    role            VARCHAR(30) NOT NULL DEFAULT 'viewer',
+    totp_secret     TEXT,
+    active          BOOLEAN NOT NULL DEFAULT true,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE admin_audit_log (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    admin_user_id   UUID NOT NULL REFERENCES admin_users(id),
+    action          VARCHAR(100) NOT NULL,
+    target_type     VARCHAR(50),
+    target_id       UUID,
+    details         JSONB,
+    ip_address      VARCHAR(45),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_audit_log_admin ON admin_audit_log (admin_user_id, created_at);
+CREATE INDEX idx_audit_log_target ON admin_audit_log (target_type, target_id);
 
 -- ============================================================
 -- MARKETS

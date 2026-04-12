@@ -68,9 +68,11 @@ polymarket/
 
 ### 0.4 Arquitectura Técnica — `tech-lead` (2 sem, en paralelo)
 - Documento de arquitectura con diagramas
-- Diseño de data model (PostgreSQL)
+- Diseño de data model (PostgreSQL) — **con modelo de balance multi-currency** (no asumir USDC everywhere)
 - Arquitectura de smart contracts
 - Diseño de API (REST + WebSocket)
+- **Abstracción PaymentProvider**: interfaz común para crypto (Polygon/USDC) y fiat (PSP futuro). El motor de trading opera en unidades internas normalizadas, agnóstico al origen del dinero
+- **Preparación multibranding**: arquitectura multi-tenant por configuración (`brand_config`: currencies permitidas, mercados, KYC requerido, tema). No implementar frontends múltiples aún, solo asegurar que ningún componente asuma una sola marca
 - Setup del monorepo
 - Pipeline CI/CD
 
@@ -85,17 +87,18 @@ polymarket/
 - Deploy scripts: Mumbai testnet → Polygon mainnet
 - 100% test coverage + fuzz tests + invariant tests + Slither
 
-### 1.2 Backend Services — `backend-dev` (6 sem) → depende de 0.4, 1.1
+### 1.2 Backend Services — `backend-dev` (7 sem) → depende de 0.4, 1.1
 - **User Service** (sem 5-6): Auth JWT + SIWE, wallet, KYC stub
 - **Market Service** (sem 6-8): CRUD mercados, estados, categorías, búsqueda full-text
 - **Order Service + Matching Engine** (sem 7-10): Order book in-memory + Redis, matching price-time priority, EIP-712, WebSockets
 - **Settlement Service** (sem 10-12): Tx manager (nonce, gas, retry), eventos on-chain, resolución
 - **Price Service** (sem 8-10): Mid-price, OHLCV candles, broadcast WebSocket
+- **Payment Service** (sem 10-12): Implementación de PaymentProvider para crypto (deposit/withdraw USDC vía wallet). Integración con fiat PSP (MoonPay, Transak, o Ramp Network) para deposit con tarjeta/bank transfer → conversión automática a USDC. Modelo de balance interno multi-currency (`user_balance` con `currency_type` y `source`)
 - **API Gateway**: OpenAPI docs, validación, CORS, rate limiting, logging (Pino)
 
 ### 1.3 Frontend — `frontend-dev` (6 sem) → depende de 0.4, 1.2, 0.3
 - **Design System** (sem 7-8): Tokens, componentes core, layout, dark mode
-- **Wallet + Auth** (sem 8-9): RainbowKit, SIWE, USDC balance, approval flow
+- **Wallet + Auth** (sem 8-9): RainbowKit, SIWE, USDC balance, approval flow. **Onboarding dual**: flujo crypto (connect wallet) + flujo fiat (registro con email/Google → deposit con tarjeta vía PSP widget)
 - **Market Explorer** (sem 9-10): Grid de mercados, filtros, búsqueda, sort, infinite scroll
 - **Market Detail** (sem 10-12): TradingView charts, order book visual, trade history
 - **Trading Panel** (sem 10-12): Buy YES/NO, limit/market, confirmación, firma EIP-712
@@ -113,6 +116,46 @@ polymarket/
 - 3 tiers de verificación
 - Geo-blocking por IP + país KYC
 - Panel admin para revisión manual
+
+### 1.6 Security Controls — `tech-lead` + `security` (3 sem, en paralelo con 1.2-1.3)
+
+**CRÍTICO: Estos controles deben estar implementados ANTES del primer depósito fiat en mainnet.**
+
+- **PSP Webhook Security**: Validar firma criptográfica de cada webhook (HMAC-SHA256 MoonPay, RSA Transak). Tabla `webhook_events` con idempotency key (UNIQUE constraint). Verificación server-to-server post-webhook. IP allowlist del PSP. Rechazar webhooks con timestamp > 5 min
+- **Balance Integrity**: Toda operación de balance en transacción PostgreSQL con `SELECT FOR UPDATE`. Constraints `CHECK (available >= 0 AND locked >= 0)`. Tabla `ledger_entries` con double-entry bookkeeping. Reconciliación automática cada hora. Usar `decimal.js` en TypeScript — prohibir `number` para montos
+- **Auth Dual Security**: Account linking requiere verificación de ownership de ambos métodos. Tabla `user_auth_methods` (un user, múltiples auth methods). CSRF protection en OAuth flows. Magic links: expiración 10 min, single-use, rate limit 3/hora
+- **Principio fiat inamovible**: Praxis NUNCA toca fiat directamente. Flujo obligatorio: Usuario → PSP → Conversión a USDC → Wallet Praxis. Si fiat pasa por cuentas de Praxis = Money Transmitter license requerida
+
+### 1.7 Admin Panel (repo separado) — `backend-dev` + `frontend-dev` (3 sem) → depende de 1.2
+
+**El admin es una aplicación separada del frontend público.** Auth por email+password y Google (NO wallet). Sistema RBAC con roles granulares.
+
+#### Roles
+
+| Rol | Permisos |
+|---|---|
+| **Super Admin** | Todo. Gestión de usuarios admin, configuración de plataforma, brand_configs |
+| **Market Manager** | Crear/editar/pausar/resolver mercados. Gestionar categorías y outcomes |
+| **Compliance Officer** | Revisar KYC submissions, aprobar/rechazar, gestionar geo-blocking, ver audit logs |
+| **Finance** | Ver dashboards financieros, aprobar withdrawals manuales, gestionar treasury, ver ledger |
+| **Support** | Ver usuarios (read-only), ver transacciones, gestionar tickets. NO puede modificar balances |
+| **Viewer** | Read-only de dashboards y métricas. Sin acceso a datos personales de usuarios |
+
+#### Funcionalidades ABM
+
+- **Mercados**: CRUD completo, resolución manual, pausar/reanudar trading, editar reglas de resolución
+- **Usuarios**: Búsqueda, ver detalle (trades, balances, KYC status), suspender cuenta, ajustar KYC tier
+- **KYC Review**: Cola de submissions pendientes, aprobar/rechazar con motivo, historial de decisiones
+- **Payments**: Ver depósitos/retiros, aprobar withdrawals > threshold, investigar transacciones sospechosas
+- **Dashboards**: GMV, revenue, usuarios activos, retención, volumen por mercado, métricas por brand
+- **Configuración**: Brand configs, fee structure, KYC limits, geo-blocking rules, PSP settings
+- **Audit Log**: Registro inmutable de toda acción admin (quién hizo qué, cuándo)
+
+#### Stack Admin
+- Frontend: React + Tailwind (o Retool/AdminJS para MVP rápido)
+- Auth: email+password con bcrypt/argon2 + Google OAuth + 2FA obligatorio para Super Admin y Finance
+- API: Endpoints separados bajo `/admin/` con middleware de role check
+- Tabla `admin_users` separada de `users` (los admin no son traders)
 
 **Milestone: Testnet launch semana 14, Mainnet MVP semana 18**
 
@@ -132,6 +175,11 @@ polymarket/
 - Price alerts
 - Charts avanzados: múltiples timeframes, volumen
 
+### 2.6 Proxy Wallet + Gas Abstraction — `tech-lead` + `backend-dev` (2 sem)
+- Proxy wallet por usuario: la plataforma genera una wallet interna que agrupa transacciones, eliminando gas fees individuales para el usuario
+- Meta-transactions o ERC-4337 (Account Abstraction) para que el usuario no necesite ETH/MATIC para gas
+- El usuario fiat opera sin saber que hay blockchain por debajo; el usuario crypto puede conectar su propia wallet o usar la proxy
+
 ### 2.3 Mobile — `frontend-dev` + `ux-designer` (3 sem)
 - PWA con install prompt y offline browsing
 - Trading panel optimizado (bottom sheet, touch targets grandes)
@@ -146,13 +194,42 @@ polymarket/
 - Embed widget (iframe)
 - Sistema de referidos
 
-### 2.5 Marketing Launch — `marketing` (4 sem, en paralelo)
-- Campaña de lanzamiento Twitter/X + Discord
-- Content calendar (3 posts/semana)
-- Outreach a 20+ influencers crypto
-- Programa de referidos con incentivos
-- PR: TechCrunch, CoinDesk, The Block
-- Torneo testnet con premios → launch mainnet coordinado
+### 2.5 Marketing Launch — `marketing` (6 sem, inicia semana 16 en paralelo con beta abierto)
+
+**IMPORTANTE:** Con fiat onramp desde MVP, el marketing pesado debe coincidir con el lanzamiento, no empezar después. El usuario target principal viene del mundo betting/gaming y no necesita ser crypto-nativo.
+
+#### Semanas 16-17: Pre-launch (durante beta abierto)
+- Landing page con dual CTA: "Registrate con email" (principal) + "Conectá tu wallet" (secundario)
+- Waitlist activada con referral system (bonus $5 por referido que deposita)
+- Content calendar: 5 posts/semana en Twitter/X + 3 TikToks/semana + 2 Instagram reels/semana
+- Outreach a 30+ influencers: 15 crypto/fintech + 15 betting/sports/gaming (tipsters, streamers, analistas deportivos)
+- Testnet tournament con premios para beta testers ($5K pool)
+- Meta Ads y TikTok Ads en modo test: $5K para validar audiencias y creatives antes del launch
+
+#### Semana 18: Launch coordinado con evento deportivo/político de alto interés
+- Campaña omnicanal: Twitter/X + TikTok + Instagram + Meta Ads + Google Ads (SEM)
+- Influencers de betting y crypto publican contenido coordinado el día de lanzamiento
+- PR dual: medios crypto (CoinDesk, The Block, Decrypt) + medios fintech/betting (TechCrunch, Sportsbusiness, medios deportivos LATAM)
+- Product Hunt launch
+- Twitter Spaces + TikTok Live con demo en vivo de registro → depósito con tarjeta → primer trade
+- Mercado flagship dual: evento deportivo de la semana + evento político activo
+
+#### Semanas 19-21: Growth post-launch
+- Paid acquisition: $15-20K/mes en Meta Ads + TikTok Ads + Google SEM. Target CAC: $8-15/usuario que deposita
+- Programa de referidos permanente: referidor y referido reciben $5 en crédito de trading
+- Bonus de primer depósito: "Depositá $10, operá con $15" (primeros 30 días)
+- Partnerships con tipsters y cappers LATAM: programa de afiliados (rev share 1% del volumen de referidos)
+- Contenido orgánico: 5 tweets/día + 3 threads/semana + daily TikToks con trades en vivo
+- Community: Discord para power users, Telegram para alertas de mercado, WhatsApp para LATAM casual
+
+#### KPIs del primer mes post-launch
+- Usuarios registrados: 5,000 (70% vía email/Google, 30% vía wallet)
+- Usuarios que depositaron: 1,500 (30% conversión)
+- Usuarios que operaron 1+ vez: 1,000 (20% conversión)
+- Volumen total: $500K USD
+- CAC blended: <$12 USD
+- D7 retention: >35%
+- D30 retention: >18%
 
 ---
 
@@ -171,12 +248,13 @@ polymarket/
 - Admin dashboard: GMV, revenue, retención
 - API de datos históricos
 
-### 3.3 API Pública — `tech-lead` + `backend-dev` (3 sem)
+### 3.3 API Pública + Datos como Producto — `tech-lead` + `backend-dev` (4 sem)
 - REST API con API keys (free: 100 req/min, paid: 1000 req/min)
 - WebSocket API para datos real-time
 - SDK TypeScript (npm) + Python (PyPI)
 - Documentación con Mintlify
 - Rate limiting por API key
+- **Data feed comercial**: probabilidades en tiempo real, históricos de mercados, volumen agregado. Revenue stream explícito para instituciones, medios, y analistas (tier Enterprise $499+/mes)
 
 ### 3.4 Tipos de Mercado Adicionales — `tech-lead` + `backend-dev` (4 sem)
 - Scalar/range markets (ej: "¿A cuánto cierra BTC?")
@@ -204,6 +282,15 @@ polymarket/
 | Manipulación de oracle | Baja | Crítico | Mecanismo de disputa UMA, override manual |
 | Dependencia de persona clave | Media | Medio | Documentación, code reviews |
 | Congestión de Polygon | Baja | Medio | Retry logic, degradación graceful |
+| Fiat PSP restricciones por país | Media | Alto | Integrar 2+ PSPs (MoonPay + Transak), fallback entre ellos, KYC asimétrico crypto/fiat |
+| Fragmentación de liquidez por marca | Baja | Medio | Order book compartido único, multibranding solo en frontend |
+| Proxy wallet key compromise | Media | Crítico | HSM/KMS obligatorio (AWS KMS), hot/cold separation, circuit breaker de withdrawals |
+| PSP webhook forgery | Media | Crítico | Signature validation, idempotency table, server-to-server verification, IP allowlist |
+| Balance manipulation (race condition) | Media | Alto | SELECT FOR UPDATE, CHECK constraints, double-entry ledger, reconciliación automática |
+| Double-spend por falta de balance check | Alta | Crítico | Lock de balance en creación de orden. `UPDATE WHERE available >= amount` atómico |
+| Clasificación como Money Transmitter | Media | Crítico | Praxis NUNCA toca fiat. Solo flujo PSP→USDC. No aceptar USD ni BRL |
+| Chargebacks en depósitos fiat | Media | Alto | 3DS obligatorio, periodo retención 14 días, chargeback reserve 2-3% volumen fiat |
+| Adverse selection fiat vs crypto | Media | Medio | Slippage protection en UI fiat, monitoreo PnL por segmento, educación in-app |
 
 ---
 

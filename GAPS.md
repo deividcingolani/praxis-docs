@@ -1,6 +1,7 @@
 # Gaps & Pendientes — Phase 0 y Phase 1
 
 Lo que se salteó o quedó incompleto de las fases 0 y 1.
+Actualizado con feedback del equipo completo (12 especialistas) — Abril 2026.
 
 ---
 
@@ -14,6 +15,9 @@ Lo que se salteó o quedó incompleto de las fases 0 y 1.
 | 0.4 Arquitectura Técnica | **Completo** | Diagramas Mermaid, data model, API design, infra |
 | 0.4 CI/CD Pipeline | **Salteado** | Diseñado en el doc pero no se creó `.github/workflows/` |
 | 0.4 Monorepo `sdk/` package | **Salteado** | Directorio `packages/sdk/` planeado pero no creado |
+| **0.1 Regulación fiat onramp** | **Falta** | Sección 9 propuesta por Legal: regulación de servicios de pago, money transmission, chargebacks, currencies permitidas (NO USD, NO BRL, solo EUR vía PSP→USDC) |
+| **0.2 Costos fiat onramp** | **Falta** | Sección 2.8 propuesta por Finanzas: PSP platform fees, fraud monitoring, chargeback liability, KYC incremental (+$6,300/mes en Phase 3) |
+| **0.3 Vocabulary guidelines** | **Falta** | Sección 3.6 propuesta por Copywriter: tabla DO/DON'T de términos crypto, regla "fiat es el camino default" |
 
 ---
 
@@ -43,11 +47,15 @@ Lo que se salteó o quedó incompleto de las fases 0 y 1.
 | KYC Service | Completo | Mock mode, sin Sumsub real |
 | API Routes (auth, markets, orders, trades, positions, prices, kyc) | Completo | |
 | Middleware (auth, validation, kyc) | Completo | |
-| **Settlement Service** | **Salteado** | No hay worker que envíe txs on-chain. El matching engine solo escribe en DB, no submitea a blockchain |
-| **Blockchain Transaction Manager** | **Salteado** | Nonce management, gas estimation, retry logic — no implementado |
-| **Background Workers (BullMQ)** | **Salteado** | Settlement worker, indexer, price aggregation, resolution — BullMQ está en deps pero no hay workers |
-| **On-chain event listener / Indexer** | **Salteado** | No hay servicio que escuche eventos del contrato (OrderFilled, ConditionResolution, etc.) |
-| **Rate limiting por endpoint** | **Parcial** | Rate limit global (100 req/min) existe, pero el rate limit específico de orders (10 req/seg) no se configuró |
+| **Settlement Service** | **Salteado** | No hay worker que envíe txs on-chain |
+| **Blockchain Transaction Manager** | **Salteado** | Nonce management, gas estimation, retry logic |
+| **Background Workers (BullMQ)** | **Salteado** | BullMQ en deps pero no hay workers |
+| **On-chain event listener / Indexer** | **Salteado** | No escucha eventos del contrato |
+| **Rate limiting por endpoint** | **Parcial** | Global (100 req/min) existe, falta por endpoint |
+| ~~**Payment Service**~~ | **✅ Completo** | Deposit/withdraw flows, payment_transactions table, PaymentProvider support |
+| ~~**Balance Service**~~ | **✅ Completo** | user_balances (available+locked), SELECT FOR UPDATE, ledger_entries |
+| **Auth dual (email/Google)** | **Salteado** | Solo SIWE. No hay email/password ni OAuth Google |
+| ~~**Webhook endpoints PSP**~~ | **✅ Completo** | /webhooks/moonpay + /webhooks/transak + HMAC signature + idempotency |
 
 ### 1.3 Frontend — Parcial
 | Deliverable | Estado | Notas |
@@ -63,23 +71,24 @@ Lo que se salteó o quedó incompleto de las fases 0 y 1.
 | Legal pages (Terms, Privacy) | Completo | |
 | Docs pages (4 guías) | Completo | |
 | Mock data (10 mercados) | Completo | |
-| **TradingView Charts** | **Salteado** | Hay placeholder div, pero no se integró `lightweight-charts` de TradingView |
-| **Order book click-to-fill** | **Salteado** | Click en precio del order book debería llenar el input de precio en trading panel |
-| **WebSocket real-time updates** | **Salteado** | Hooks y socket client existen, pero no están conectados a nada real |
-| **Sidebar de filtros** | **Parcial** | Componente existe pero no se usa en la página de markets |
-| **Mobile responsive** | **Parcial** | Mobile-first classes existen, pero no se testeó ni ajustó (bottom sheet, hamburger menu funcionalidad) |
-| **E2E Tests (Playwright)** | **Salteado** | Planeado pero no se creó ni configuró |
-| **Lighthouse audit** | **Salteado** | Target era >90, no se corrió |
+| **TradingView Charts** | **Salteado** | Placeholder div, no se integró `lightweight-charts` |
+| **Order book click-to-fill** | **Salteado** | |
+| **WebSocket real-time updates** | **Salteado** | Hooks existen pero no conectados |
+| **Mobile responsive** | **Parcial** | Classes existen, no testeado |
+| **E2E Tests (Playwright)** | **Salteado** | |
+| **AuthModal dual** | **Salteado** | No hay componente de registro email/Google ni FundingModal para PSP |
+| **BrandProvider + useCurrency** | **Salteado** | No hay abstracción de moneda ni multibranding en frontend |
 
-### 1.4 UX Design — Completo (documentación)
+### 1.4 UX Design — Parcial
 | Deliverable | Estado |
 |---|---|
 | User flows (5 flujos con Mermaid) | Completo |
-| Interaction specs (loading, error, empty, success) | Completo |
+| Interaction specs | Completo |
 | Responsive layout specs | Completo |
 | Accessibility checklist | Completo |
-| Micro-interactions | Completo |
-| Component behavior specs | Completo |
+| **Flow 1B: Onboarding fiat** | **Falta** | Propuesto por UX: flujo email/Google → depósito tarjeta → primer trade |
+| **Flow 5A: Depósito fiat** | **Falta** | Propuesto por UX: selección método → monto → PSP iframe → confirmación |
+| **Error states fiat** | **Falta** | Card declined, PSP timeout, KYC required, deposit limits |
 
 ### 1.5 KYC Flow — Parcial
 | Deliverable | Estado | Notas |
@@ -91,30 +100,85 @@ Lo que se salteó o quedó incompleto de las fases 0 y 1.
 | KYC Frontend page | Completo | 3-step wizard |
 | KYC Banner component | Completo | |
 | **Sumsub integration** | **Salteado** | Sin integración con proveedor KYC real |
-| **Geo-blocking middleware** | **Salteado** | Planeado en legal doc pero no implementado |
-| **Admin panel para KYC review** | **Salteado** | Solo hay endpoints, no hay UI de admin |
+| **Geo-blocking middleware** | **Salteado** | |
+| **Admin panel para KYC review** | **Salteado** | Solo endpoints, no UI |
+
+### 1.6 Security Controls — No implementado
+| Deliverable | Estado |
+|---|---|
+| **PSP webhook signature validation** | **Falta** — CRÍTICO |
+| **Webhook idempotency table** | **Falta** — CRÍTICO |
+| **Balance CHECK constraints** | **Falta** — CRÍTICO |
+| **Ledger entries (double-entry)** | **Falta** |
+| **Auth dual CSRF protection** | **Falta** |
+
+### 1.7 Admin Panel — No implementado
+| Deliverable | Estado |
+|---|---|
+| **Admin app (repo separado)** | **Falta** — No existe |
+| **RBAC system** | **Falta** — No hay roles definidos en código |
+| **Admin auth (email+password+Google+2FA)** | **Falta** |
+| **Market management UI** | **Falta** |
+| **KYC review UI** | **Falta** |
+| **Payment/withdrawal approval UI** | **Falta** |
+| **Audit log** | **Falta** |
+
+---
+
+## Bugs encontrados en código existente
+
+| Bug | Severidad | Archivo | Detalle |
+|---|---|---|---|
+| ~~`users.address` es NOT NULL~~ | ~~CRÍTICO~~ | — | ✅ RESUELTO 12-abr — `address` ahora nullable |
+| ~~Matching engine no verifica balance~~ | ~~CRÍTICO~~ | — | ✅ RESUELTO 12-abr — `lockFunds` en `createOrder`, `unlockFunds` en `cancelOrder` |
+| ~~Matching engine no usa transacción DB~~ | ~~ALTO~~ | — | ✅ RESUELTO 12-abr — `matchOrders` envuelto en `db.transaction()` |
+| ~~Self-trade prevention bloquea book~~ | ~~MEDIO~~ | — | ✅ RESUELTO 12-abr — ahora hace `break` (skip) en vez de detener el loop |
+| ~~Faltan tablas en Drizzle schema~~ | ~~ALTO~~ | — | ✅ PARCIAL 12-abr — Agregadas: `user_balances`, `ledger_entries`, `payment_transactions`, `webhook_events`. Faltan: `brand_configs` |
+| Faltan campos en users | **ALTO** | `backend/src/db/schema.ts` | Falta `auth_method`, `brand_id`, `google_id`. Email no tiene UNIQUE |
+| Zero tests de backend | **ALTO** | — | No hay Vitest configurado, no hay un solo `.test.ts` |
 
 ---
 
 ## Resumen de Gaps Críticos (ordenados por prioridad)
 
-### Prioridad Alta — Necesarios antes de mainnet
-1. **Settlement Service + Blockchain TX Manager** — Sin esto, los trades no se liquidan on-chain
-2. **On-chain Event Indexer** — Sin esto, no se sincroniza estado blockchain ↔ DB
-3. **TradingView Charts** — Core de la UX de trading, el placeholder no es aceptable
-4. **WebSocket real-time** — Los hooks existen pero no hay conexión real
-5. **Sumsub KYC real** — Necesario para compliance antes de manejar fondos
+### P0 — Bloqueantes antes de mainnet (money-losing si faltan)
+1. ~~**Balance Service + verificación en matching engine**~~ — ✅ RESUELTO 12-abr
+2. ~~**`users.address` nullable**~~ — ✅ RESUELTO 12-abr
+3. ~~**PSP webhook signature validation + idempotency**~~ — ✅ RESUELTO 12-abr
+4. **Settlement Service + Blockchain TX Manager** — Trades no se liquidan on-chain
+5. **On-chain Event Indexer** — No se sincroniza blockchain ↔ DB
+6. **Principio "Praxis nunca toca fiat"** — Documentar y enforcer que solo flujo PSP→USDC. Currencies: NO USD, NO BRL, solo EUR vía PSP
+7. ~~**Ledger entries (double-entry bookkeeping)**~~ — ✅ RESUELTO 12-abr
 
-### Prioridad Media — Necesarios para launch
-6. **Background Workers (BullMQ)** — Settlement, resolution, notificaciones
-7. **CI/CD Pipeline** — GitHub Actions para lint, test, build, deploy
-8. **E2E Tests** — Al menos para flujos críticos (connect → trade → portfolio)
-9. **Geo-blocking** — Requerido por compliance
-10. **Admin Panel** — Para crear/resolver mercados y revisar KYC
+### P1 — Necesarios antes de mainnet
+8. ~~**Payment Service completo**~~ — ✅ RESUELTO 12-abr
+9. **Auth dual (email/Google + SIWE)** — Endpoints, tabla `user_auth_methods`, account linking
+10. **Admin Panel con RBAC** — Repo separado, auth email+password+Google+2FA, roles (Super Admin, Market Manager, Compliance, Finance, Support, Viewer)
+11. **Security Controls** — CHECK constraints en balances, CSRF en OAuth, rate limiting auth email
+12. **Sumsub KYC real** — Necesario para compliance
+13. **Geo-blocking** — Requerido por compliance
+14. **Background Workers (BullMQ)** — Settlement, webhook processing, reconciliation, resolution
+15. **Webhook Processing Worker** — Procesa webhooks PSP con reintentos y DLQ
+16. **Chargeback protection** — 3DS obligatorio, período retención 14 días, clausula ToS
 
-### Prioridad Baja — Nice to have para MVP
-11. **SDK package** — Para terceros, puede esperar a Phase 3
-12. **Slither analysis** — Buena práctica pero la auditoría real es lo que importa
-13. **Lighthouse audit** — Optimización, no bloquea launch
-14. **Order book click-to-fill** — UX improvement
-15. **Mobile bottom sheet** — Responsive mejora
+### P2 — Necesarios para launch
+17. **TradingView Charts** — Core UX de trading
+18. **WebSocket real-time** — Hooks existen pero sin conexión
+19. **Frontend: AuthModal + FundingModal + BrandProvider + useCurrency** — Onboarding dual completo
+20. **UX flows fiat** — Flow 1B onboarding fiat, Flow 5A depósito fiat, error states
+21. **CI/CD Pipeline** — GitHub Actions
+22. **E2E Tests (Playwright)** — Al menos fiat onboarding + wallet onboarding + trade
+23. **Vitest setup + unit tests** — Zero tests actualmente. Prioridad: balance, webhooks, matching
+24. **Vocabulary guidelines** — Sección 3.6 en brand identity: DO/DON'T de términos crypto
+25. **Costos fiat en business model** — Sección 2.8: PSP fees, chargeback reserve, fraud monitoring
+
+### P3 — Nice to have para MVP, necesarios para scale
+26. **Proxy Wallet + Gas Abstraction (ERC-4337)** — Phase 2. AWS KMS para key management ($5-20/mes)
+27. **Multibranding activo** — Arquitectura preparada, solo una marca en MVP
+28. **Data feed comercial** — Phase 3. Empezar a capturar tick data + depth desde Phase 1
+29. **Regulación fiat** — Sección 9 en doc legal: money transmission, chargebacks, currencies
+30. **Segmentación analytics crypto/fiat** — Métricas separadas por origen de usuario
+31. **Load testing (k6)** — Balance race conditions bajo carga, webhook throughput
+32. **SDK package** — Phase 3
+33. **Slither analysis** — Pre-auditoría
+34. **Quick bet mode** — UX simplificada Sí/No + monto para fiat users (propuesta Marketing)

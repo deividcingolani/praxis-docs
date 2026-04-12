@@ -126,13 +126,30 @@ La plataforma puede actuar como market maker en mercados seleccionados para:
 
 **Nota:** Esta actividad requiere capital significativo y modelos de riesgo. Se recomienda iniciar conservadoramente con max 10% del treasury y solo en mercados de alta liquidez.
 
-### 1.6 Resumen de Revenue Streams
+### 1.6 Data Feed Comercial (Datos como Producto)
+
+La informacion agregada de los mercados (probabilidades en tiempo real, volumen, historicos) tiene valor comercial para instituciones, medios de comunicacion, y analistas. Este revenue stream se activa en Phase 3 junto con la API publica.
+
+| Tier | Precio | Incluye | Target |
+|---|---|---|---|
+| **Data Basic** | Incluido en API Pro ($99/mes) | Probabilidades actuales, historico 30 dias | Analistas, periodistas |
+| **Data Premium** | $299/mes | Historico completo, datos de liquidez, orderbook snapshots, export CSV/JSON | Fondos, consultoras |
+| **Data Enterprise** | $1,500-$2,500/mes | Feed real-time via WebSocket, datos granulares tick-level, SLA 99.9%, soporte dedicado | Medios (TV, prensa), instituciones financieras, plataformas de analytics |
+| **Data Redistribution** | Custom ($5,000+/mes) | Licencia para redistribuir datos en productos propios | Agregadores, plataformas fintech |
+
+**Revenue estimado mes 18:** $2,000-$8,000/mes
+**Revenue estimado mes 24:** $10,000-$50,000/mes
+
+**Por que es valioso:** Los prediction markets generan la "wisdom of crowds" — probabilidades que historicamente superan a encuestas y modelos expertos. Medios como Bloomberg y Reuters ya citan datos de Polymarket. Una plataforma que empaquete esto como producto tiene un revenue stream de alto margen con costo marginal casi cero.
+
+### 1.7 Resumen de Revenue Streams
 
 | Fuente | % Revenue Estimado (Mes 12) | % Revenue Estimado (Mes 24) |
 |---|---|---|
-| Trading fees (hibrido) | 60-70% | 50-60% |
-| Premium features | 10-15% | 15-20% |
-| API access | 5-10% | 10-15% |
+| Trading fees (hibrido) | 60-70% | 45-55% |
+| Premium features | 10-15% | 12-18% |
+| API access | 5-10% | 8-12% |
+| Data feed comercial | 0% | 5-10% |
 | Market making | 10-15% | 10-15% |
 | Market creation fees | 2-5% | 3-5% |
 
@@ -264,7 +281,21 @@ Salarios estimados para equipo distribuido con base LATAM. Todos los montos son 
 | **Contingencias (5% del total)** | Variable |
 | **Total Otros** | **$1,400-$3,800/mes** |
 
-### 2.7 Resumen de Costos Mensuales por Fase
+### 2.8 Costos Fiat Onramp (PSP)
+
+La integracion con PSPs (MoonPay, Transak) para depositos fiat desde MVP introduce costos operativos adicionales. Los fees de conversion (1-4.5%) son pass-through al usuario y no afectan el P&L directamente, pero los costos de plataforma y compliance si.
+
+| Concepto | Costo Mes 1-6 | Costo Mes 7-12 | Costo Mes 13-24 |
+|---|---|---|---|
+| **PSP platform fee** | $500/mes | $1,000/mes | $2,000/mes |
+| **Fraud monitoring (Sardine/Sift)** | $0 | $500/mes | $1,500/mes |
+| **Chargeback disputes (labor + liability)** | $0 | $500/mes | $2,000/mes |
+| **KYC incremental (fiat tiers)** | $200/mes | $500/mes | $800/mes |
+| **Total Fiat Onramp** | **$700/mes** | **$2,500/mes** | **$6,300/mes** |
+
+**Nota:** Los fees de conversion PSP (1-4.5% segun metodo de pago) son absorbidos por el usuario (pass-through), no por la plataforma. La politica de no subsidiar PSP fees es critica para preservar margenes.
+
+### 2.9 Resumen de Costos Mensuales por Fase
 
 | Categoria | Fase 1 (M1-6) | Fase 2 (M7-12) | Fase 3 (M13-24) |
 |---|---|---|---|
@@ -693,6 +724,10 @@ Si se decide proceder, considerar un **"points program"** primero (sin token, si
 | **Market making capital** | 15% del treasury | USDC en contratos de la plataforma | Capital de trabajo para liquidez |
 | **Yield generation** | 10% del treasury | Protocolos DeFi de bajo riesgo (ver 7.3) | Rendimiento sobre capital idle |
 | **Contingencia fiat** | 5% del treasury | Cuenta bancaria USD (Panama/BVI) | Emergencias, pagos que requieren fiat |
+| **Chargeback reserve (fiat)** | 2-3% del volumen fiat mensual | USDC segregado | Cubrir chargebacks de depositos con tarjeta (ventana 120 dias) |
+| **PSP settlement buffer** | 7 dias de volumen fiat | USDC | Cubrir gap de liquidacion PSP (T+2 a T+7) |
+
+**Nota sobre fiat onramp:** Si el 30% del GMV entra via fiat, la chargeback reserve y el settlement buffer pueden representar $50K-$500K adicionales en capital inmovilizado segun el volumen. Este capital no genera yield y debe considerarse en la planificacion de runway.
 
 **Regla clave:** Nunca mas del 50% del treasury en un solo stablecoin. USDC como base por ser el mas regulado y transparente (reservas auditadas por Deloitte).
 
@@ -805,6 +840,19 @@ Si se decide proceder, considerar un **"points program"** primero (sin token, si
 | **Payback period** | Meses para recuperar CAC | <3 meses |
 | **ARPU (monthly)** | Revenue / MAU | >$7 |
 | **ARPPU (monthly)** | Revenue / paying users (premium) | >$25 |
+
+#### Metricas por Segmento de Usuario (Crypto vs Fiat)
+
+| Metrica | Definicion | Frecuencia | Target M12 | Target M24 |
+|---|---|---|---|---|
+| **GMV by source** | Volumen separado crypto vs fiat | Diario | Fiat >30% del GMV | Fiat >40% del GMV |
+| **ARPU by source** | Revenue/MAU por segmento | Mensual | Fiat ARPU >50% del crypto | Fiat ARPU >60% del crypto |
+| **Retention by source** | D1/D7/D30 separados por origen | Semanal | D30 fiat >10% | D30 fiat >15% |
+| **PnL by source** | Profit/loss promedio por segmento | Semanal | Fiat PnL > -10% | Fiat PnL > -5% |
+| **Fiat deposit volume** | Total depositado via PSPs | Mensual | $500K/mes | $5M/mes |
+| **Fiat conversion rate** | Visitors que completan deposito / que inician | Semanal | >60% | >70% |
+| **Chargeback rate** | Chargebacks / total fiat transactions | Mensual | <1% | <0.5% |
+| **Time to first trade by source** | Registro a primer trade (minutos) | Semanal | Fiat <5min | Fiat <3min |
 
 ### 8.2 Reporting Cadence
 
