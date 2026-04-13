@@ -1,6 +1,7 @@
 # Phase 0.3: Identidad de Marca y Posicionamiento
 
 > Documento de trabajo | v1.0 | Abril 2026
+> [UPDATE April 2026] — Annotations added throughout to reflect what was actually implemented vs. what was planned.
 
 ---
 
@@ -100,6 +101,8 @@ Variante estilizada de "mercado". Directo, transparente, latinoamericano de raiz
 
 > NOTA: Antes de tomar una decision final, se debe realizar una busqueda exhaustiva de trademarks (USPTO, EUIPO, INPI) y disponibilidad de dominios real. Este documento presenta evaluaciones estimadas.
 
+> **[UPDATE April 2026]** Neither Praxis nor Previo was chosen. The project was rebranded to **Forka** (from "fork" — branching paths, alternative outcomes). Domain **forka.io** secured and live on Vercel. Social handles: Twitter **@Forkad2026**, Discord server active. The name "Praxis" remains in repo names and internal references for historical reasons, but all user-facing branding is Forka. Multi-branding is implemented via `brand.config.ts` with Forka as the default brand.
+
 ---
 
 ## 2. Posicionamiento y Propuesta de Valor
@@ -113,6 +116,8 @@ Variante estilizada de "mercado". Directo, transparente, latinoamericano de raiz
 | 3 | **"Predict. Prove. Profit."** | Estructura triple, memorable. Captura el flujo completo del usuario. ES: "Predeci. Demostra. Gana." |
 
 **Recomendacion:** Tagline #1 para comunicacion general. Tagline #2 para campanas de awareness. Tagline #3 para conversion y performance marketing.
+
+> **[UPDATE April 2026]** Tagline #1 "Trade what you know" is used as the primary tagline across the live site and SEO metadata.
 
 ### 2.2 Elevator Pitches (30 segundos cada uno)
 
@@ -207,6 +212,14 @@ Variante estilizada de "mercado". Directo, transparente, latinoamericano de raiz
 
 > NOTA: El ratio de contraste minimo debe ser 4.5:1 para texto normal y 3:1 para texto grande, cumpliendo WCAG 2.1 AA.
 
+> **[UPDATE April 2026]** Color palette was implemented as specified with minor adjustments:
+> - **Primary teal**: `#00D4AA` (Electric Teal) — confirmed as main accent/CTA color.
+> - **Dark background**: `#0B1120` — confirmed as dark mode primary background.
+> - **Profit Green**: `#10B981` — confirmed for positive numbers/Yes positions.
+> - **Loss Red**: `#EF4444` — confirmed for negative numbers/No positions.
+> - **Light/dark theme toggle** is fully implemented and persisted per user preference.
+> - All semantic colors (Warning Amber, Info Blue, Neutral Purple) are in active use across the UI.
+
 ### 3.2 Tipografia
 
 | Uso | Fuente | Peso | Fallback |
@@ -230,6 +243,8 @@ Mono: 14px / 20px line-height / 0em tracking (datos financieros)
 ```
 
 **Razonamiento:** Inter es open-source, con excelente rendering en pantalla, soporte completo de caracteres latinos (incluyendo tildes y enyes), y adopcion masiva en fintech. JetBrains Mono para datos financieros porque sus numeros tienen ancho fijo (tabular figures), ideal para precios y porcentajes que cambian en tiempo real.
+
+> **[UPDATE April 2026]** Typography implemented exactly as planned. **Inter** is the primary UI font (headings, body, labels, buttons). **JetBrains Mono** is used for financial data, numbers, and code displays. Both loaded via Next.js font optimization.
 
 ### 3.3 Tono de Voz
 
@@ -354,6 +369,11 @@ El publico proveniente del mundo betting (Blaze, Stake, Bet365) responde a un to
 2. **Progresividad:** Informacion tecnica disponible para quien la busque (tooltips, seccion "Avanzado", FAQ), pero nunca como barrera de entrada.
 3. **Neutralidad de via:** No decir "depositar en crypto" como si fuera el default. Tarjeta y crypto son opciones paralelas, con tarjeta como primera visible.
 4. **Consistencia interna:** Si en un lugar decimos "saldo", no decir "balance" en otro. Mantener un glosario unico.
+
+> **[UPDATE April 2026]** Vocabulary guidelines and fiat-first principles were implemented across the frontend:
+> - **i18n fully implemented** in three languages: English (EN), Spanish (ES), and Portuguese (PT), covering all pages and UI elements.
+> - Fiat onramp (MoonPay + Mercado Pago) is the default deposit path, with crypto wallet connection as secondary — matching the "neutralidad de via" principle.
+> - All references in the codebase still use "Praxis" internally but the `brand.config.ts` multi-branding system outputs "Forka" to users.
 
 ---
 
@@ -665,6 +685,14 @@ Con fiat onramp desde MVP, la audiencia no necesita ser crypto-nativa. Esto abre
 | Seed influencer outreach | Identificar y contactar 20 micro-influencers (5K-50K seguidores) en crypto, politica y datos | Marketing + BD |
 | SEO foundations | Blog con 5 articulos educativos sobre prediction markets | Content |
 
+> **[UPDATE April 2026]** Mes -3 "Foundations" status — what was actually built:
+> - **Landing page**: Live at forka.io on Vercel. Full marketing site, not just a waitlist page.
+> - **Identity visual**: Fully implemented — logo, colors, typography, favicon/icon system, PWA manifest with Forka branding.
+> - **Social media**: Twitter (@Forkad2026) and Discord created. Telegram not yet set up.
+> - **SEO foundations**: Implemented beyond plan — Blog with 5 posts published, plus OG images, JSON-LD structured data, sitemap.xml, robots.txt all in production.
+> - **Legal pages**: Terms of Service, Privacy Policy, Disclaimer, AML Policy, and Cookie Policy all live — not originally in this GTM plan but completed during this phase.
+> - **Market categories implemented**: Politics, Crypto, Sports, Science, Entertainment, Economics, Technology, Weather, Other.
+
 #### Mes -2: Momentum
 
 | Accion | Detalle | Responsable |
@@ -784,6 +812,8 @@ La arquitectura multi-tenant por configuracion (definida en PLAN.md seccion 0.4)
 
 **Fase 1 (Launch):** Solo Praxis. Una marca, dos flujos de onboarding (crypto + fiat). El branding es lo suficientemente flexible para atraer ambas audiencias.
 
+> **[UPDATE April 2026]** Multi-branding architecture was implemented ahead of schedule via `brand.config.ts`. The system supports multiple brand configurations sharing a single backend and order book. **Forka** (not Praxis) launched as the default and only active brand. The config includes brand-specific: name, tagline, colors, logo paths, social links, legal entity info, and supported locales. Adding a second brand (e.g., a gaming-focused skin) requires only a new config entry and frontend deployment — no backend changes needed. The "Blaze audience" strategy from section 7.2 remains viable: Blaze brings audience and experience to a white-label Forka frontend, with no legal ties between entities.
+
 **Fase 2 (Mes 2-3 post-launch):** Si las metricas muestran que >40% de los usuarios entran por fiat y vienen de betting, lanzar la segunda marca con frontend diferenciado:
 - Paleta de colores mas vibrante/gaming (vs. el navy/teal profesional de Praxis)
 - UX simplificada: "Quick bet" como modo default, sin order book visible
@@ -810,9 +840,9 @@ Fragmentacion de esfuerzo de marketing. Mitigacion: la segunda marca se lanza so
 
 ## Anexo: Checklist de Assets Pre-Launch
 
-- [ ] Logo (SVG, PNG en multiples tamanos)
-- [ ] Favicon y app icon
-- [ ] Open Graph images para redes sociales
+- [x] Logo (SVG, PNG en multiples tamanos)
+- [x] Favicon y app icon
+- [x] Open Graph images para redes sociales
 - [ ] Brand guidelines PDF para partners
 - [ ] Press kit (logo, screenshots, bio del founder, one-pager)
 - [ ] Email templates (waitlist confirmation, beta invite, launch announcement)
@@ -821,7 +851,56 @@ Fragmentacion de esfuerzo de marketing. Mitigacion: la segunda marca se lanza so
 - [ ] Video de producto (30s y 90s)
 - [ ] Merch design (stickers, camisetas) para early community
 
+> **[UPDATE April 2026]** Additional assets completed beyond the original checklist:
+> - [x] PWA manifest with Forka branding (name, icons, theme color)
+> - [x] JSON-LD structured data for SEO
+> - [x] Sitemap.xml and robots.txt
+> - [x] Full i18n translation files (EN/ES/PT) for all pages
+> - [x] Legal pages: Terms of Service, Privacy Policy, Disclaimer, AML Policy, Cookie Policy
+> - [x] Blog infrastructure with 5 published posts
+> - [x] Light/dark theme system with user preference persistence
+
 ---
 
 *Documento preparado como parte de Phase 0 -- Pre-Development Planning.*
 *Proximo documento: Phase 0.4 -- Technical Architecture & Stack Decision.*
+
+---
+
+## [UPDATE April 2026] Implementation Summary
+
+### What was implemented (planned items)
+| Area | Status | Notes |
+|---|---|---|
+| Brand name | Changed | Rebranded from Praxis to **Forka**; domain forka.io live |
+| Color palette | Implemented | Primary teal #00D4AA, dark bg #0B1120, semantic colors all matching spec |
+| Typography | Implemented | Inter (UI) + JetBrains Mono (numbers/code) as planned |
+| Light/dark theme | Implemented | Toggle with user preference persistence |
+| Tone of voice | Implemented | Fiat-first language, dual-audience vocabulary applied across UI |
+| i18n | Implemented | EN/ES/PT complete across all pages (spec said ES/PT support, delivered fully) |
+| Multi-branding | Implemented | `brand.config.ts` architecture ready; Forka as default brand |
+| SEO | Implemented | OG images, JSON-LD, sitemap, robots.txt |
+| Blog | Implemented | 5 posts published |
+| Social media | Partial | Twitter @Forkad2026 and Discord active; Telegram not yet set up |
+
+### What was implemented (beyond plan)
+| Area | Notes |
+|---|---|
+| PWA manifest | Full Forka branding in manifest.json |
+| Favicon/icon system | Complete icon set for all platforms |
+| Legal pages | Terms, Privacy, Disclaimer, AML, Cookies — not in original brand doc |
+| Category system | 9 categories: Politics, Crypto, Sports, Science, Entertainment, Economics, Technology, Weather, Other |
+
+### What remains unimplemented
+| Area | Notes |
+|---|---|
+| Waitlist / referral system | No waitlist page built; went straight to full site |
+| Influencer program | Not started |
+| Paid acquisition | Not started |
+| Telegram channel | Not set up |
+| Brand guidelines PDF | Not created |
+| Press kit | Not created |
+| Email templates | Not created |
+| Video de producto | Not created |
+| Merch design | Not created |
+| Discord bot integrations | Not implemented (Market Bot, Poll Bot, etc.) |

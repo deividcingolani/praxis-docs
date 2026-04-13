@@ -1,4 +1,6 @@
-# Architecture Document — Prediction Markets Platform
+# Architecture Document — Forka Prediction Markets Platform
+
+> **Note:** This document was originally written during Phase 0 (pre-development) under the name "Praxis". The platform was rebranded to **Forka** during development. `[UPDATE April 2026]` sections throughout reflect what was actually built.
 
 ## Table of Contents
 
@@ -101,6 +103,59 @@ graph TB
     NS --> WS
 ```
 
+### [UPDATE April 2026] System Architecture — What Was Actually Built
+
+**Repository structure:** 5 separate repos (NOT a monorepo as originally implied):
+- `backend/` — Fastify 5, Drizzle ORM, PostgreSQL, Redis, BullMQ
+- `frontend/` — Next.js 15, React 19, Tailwind v4, wagmi, @tanstack/react-query
+- `admin/` — Vite + React (separate admin panel)
+- `contracts/` — Solidity, Foundry
+- `docs/` — Project documentation
+
+**Key architectural deviations from the plan:**
+1. **Auth expanded**: SIWE (wallet) + Email/password + Google OAuth (plan only had SIWE)
+2. **Matching Engine**: In-memory order matching inside `order.service.ts`, not a separate dedicated service
+3. **Notification Service**: Replaced by `push.service.ts` (Web Push) and `email.service.ts` — no dedicated notification service
+4. **Workers**: Only 2 BullMQ worker files (`settlement.worker.ts`, `payout.worker.ts`), not 4 separate workers. The settlement worker handles settlement, stuck TX monitoring, and reconciliation. Payout worker polls every 30s (not BullMQ-based).
+5. **Indexer Worker**: Not implemented as a standalone worker. `indexer.service.ts` exists but on-chain indexing is not actively running.
+6. **Price Aggregation Worker**: Not implemented as a standalone worker. Price updates happen via `price.service.ts` on trade execution.
+7. **Resolution Worker**: Resolution is handled by `resolution.service.ts` and `settlement.service.ts`, not a dedicated worker.
+8. **UMA Oracle**: Not integrated. Market resolution is admin-driven (manual resolution via admin panel).
+9. **Payment providers**: MoonPay + Mercado Pago (LATAM fiat). Transak was planned but not implemented. Crypto deposits planned but not live.
+10. **28 services** (not 9 as originally planned) — see full list below.
+11. **Admin panel**: Fully separate app (Vite + React) with its own auth, not part of the main frontend.
+12. **KYC**: SumSub integration (`sumsub.service.ts`) — not a custom KYC flow.
+
+**28 Backend Services (actual `*.service.ts` files):**
+1. `admin.service.ts` — Platform stats, user/market management
+2. `admin-auth.service.ts` — Admin panel authentication
+3. `auth.service.ts` — SIWE wallet authentication
+4. `user-auth.service.ts` — Email/password + Google OAuth
+5. `balance.service.ts` — Credit/debit/lock/unlock with SELECT FOR UPDATE
+6. `blockchain.service.ts` — Polygon RPC interaction
+7. `email.service.ts` — Transactional emails
+8. `indexer.service.ts` — On-chain event indexing
+9. `kyc.service.ts` — KYC tier management
+10. `limits.service.ts` — KYC-tier-based deposit/withdrawal limits
+11. `market.service.ts` — Market CRUD and lifecycle
+12. `market-proposal.service.ts` — Community market proposals
+13. `order.service.ts` — Order matching engine (in-memory CLOB)
+14. `payment.service.ts` — MoonPay + Mercado Pago integration
+15. `payout.service.ts` — Withdrawal payout execution
+16. `position.service.ts` — User positions and P&L
+17. `price.service.ts` — OHLCV candle aggregation
+18. `push.service.ts` — Web Push notifications
+19. `reconciliation.service.ts` — Balance reconciliation (hourly)
+20. `referral.service.ts` — Referral program
+21. `resolution.service.ts` — Market resolution (admin-driven)
+22. `settlement.service.ts` — On-chain trade settlement
+23. `social.service.ts` — Market comments and reactions
+24. `stuck-tx-monitor.service.ts` — Stuck blockchain TX detection
+25. `sumsub.service.ts` — SumSub KYC provider integration
+26. `trade.service.ts` — Trade recording and history
+27. `websocket.service.ts` — Socket.IO real-time channels
+28. `withdrawal.service.ts` — Withdrawal request management
+
 ### Component Descriptions
 
 | Component | Responsibility |
@@ -123,6 +178,43 @@ graph TB
 | **Balance Service** | Atomic balance operations: credit, debit, lock, unlock. All mutations use SELECT FOR UPDATE |
 | **Webhook Processing Worker** | Procesa webhooks de PSPs (MoonPay, Transak), acredita balances |
 | **Reconciliation Cron** | Verifica consistencia entre PSPs y balances internos cada 15 min |
+
+### [UPDATE April 2026] Component Descriptions — Actual
+
+| Component | Responsibility | Status |
+|---|---|---|
+| **API Gateway (Fastify 5)** | Request routing, rate limiting, JWT validation, CORS | Built |
+| **WebSocket Server (Socket.IO)** | Real-time orderbook, trades, prices, notifications | Built |
+| **Auth Service (SIWE)** | Wallet-based auth with nonce/signature flow, JWT tokens | Built |
+| **User Auth Service** | Email/password registration + login, Google OAuth, password reset | Built (added beyond plan) |
+| **Admin Auth Service** | Separate admin authentication (email + Google) | Built (added beyond plan) |
+| **Market Service** | CRUD markets, outcomes, categories, tags, search | Built |
+| **Order Service + Matching** | In-memory CLOB matching, price-time priority, partial fills | Built (matching is inside order.service.ts, not separate) |
+| **Trade Service** | Trade recording, history queries | Built |
+| **Position Service** | User positions, P&L | Built |
+| **Price Service** | OHLCV candle aggregation | Built |
+| **Resolution Service** | Market resolution — admin-driven | Built (UMA oracle NOT integrated) |
+| **Settlement Worker (BullMQ)** | Batches trades for on-chain settlement | Built (includes stuck TX monitor + reconciliation) |
+| **Payout Worker (polling)** | Processes withdrawals every 30s | Built (polling, not BullMQ) |
+| **Indexer Service** | On-chain event indexing | Exists but not actively running |
+| **Price Aggregation Worker** | OHLCV candle generation | Not built as separate worker; handled in price.service.ts |
+| **Resolution Worker** | Oracle monitoring | Not built; resolution is manual/admin |
+| **Payment Service** | MoonPay (card/Apple Pay/Google Pay) + Mercado Pago (LATAM) | Built |
+| **Balance Service** | credit/debit/lock/unlock with SELECT FOR UPDATE, ledger entries | Built |
+| **KYC Service** | 3 tiers (tier_0/1/2), SumSub integration | Built |
+| **Limits Service** | KYC-tier deposit/withdrawal limits | Built (added beyond plan) |
+| **Withdrawal Service** | Withdrawal request lifecycle | Built (added beyond plan) |
+| **Payout Service** | Payout execution to user methods | Built (added beyond plan) |
+| **Push Service** | Web Push notifications (service worker) | Built (added beyond plan) |
+| **Email Service** | Transactional emails (welcome, password reset) | Built (added beyond plan) |
+| **Referral Service** | Referral codes and tracking | Built (added beyond plan) |
+| **Social Service** | Market comments and reactions | Built (added beyond plan) |
+| **Market Proposal Service** | Community-submitted market proposals | Built (added beyond plan) |
+| **Blog (Admin)** | Blog posts managed from admin panel | Built (added beyond plan) |
+| **Reconciliation Service** | Balance reconciliation (hourly, not 15min) | Built |
+| **Stuck TX Monitor** | Detects stuck blockchain transactions | Built |
+| **SumSub Service** | KYC provider integration | Built (added beyond plan) |
+| **Blockchain Service** | Polygon RPC via Alchemy | Built |
 
 ### Payment Provider Architecture
 
@@ -154,6 +246,19 @@ Implementations:
 
 **Flujo crypto**: Usuario conecta wallet → transfiere USDC a la plataforma → balance interno se acredita.
 
+### [UPDATE April 2026] Payment Provider — Actual Implementation
+
+The plan described `CryptoProvider`, `MoonPayProvider`, and `TransakProvider`. What was actually built:
+
+- **MoonPay**: Implemented via browser SDK overlay (card, Apple Pay, Google Pay). Signed URLs generated server-side. Converts fiat to USDC.
+- **Mercado Pago**: Implemented via Checkout Pro (LATAM fiat). Added beyond original plan to serve the Latin American market.
+- **Transak**: Not implemented (dropped as redundant with MoonPay).
+- **Crypto deposits**: Not yet live (wallet transfer flow exists in `blockchain.service.ts` but not connected to deposit flow).
+
+**Key principle preserved:** Forka never touches fiat directly. All fiat flows through PSPs who convert to USDC. The user sees EUR in the UI but never handles crypto directly.
+
+**Webhook processing:** Implemented synchronously in route handlers (not via BullMQ as planned). Idempotency via `webhook_events` table with UNIQUE constraint on `(provider, external_id, event_type)`. No Dead Letter Queue.
+
 ### Multibranding Architecture
 
 La plataforma soporta múltiples marcas sobre un **único engine de liquidez** (order book compartido).
@@ -175,6 +280,8 @@ Cada request HTTP lleva un `brand_id` (vía header, subdomain, o config del fron
 
 > **Nota:** En el MVP se implementa una sola marca (Praxis). La arquitectura queda preparada para multibranding sin implementarlo activamente.
 
+> **[UPDATE April 2026]** The `brand_configs` table was NOT implemented in the actual database schema. Multibranding support exists only at the frontend level via `brand_config` in the codebase (theme, i18n for EN/ES/PT, light/dark mode). Only the Forka brand is active. The brand_id field was also dropped from the users table. The shared order book concept is preserved — all users trade on the same book regardless of future brand configuration.
+
 ### Webhook Processing Architecture
 
 Los PSPs (MoonPay, Transak) notifican eventos de pago via webhooks HTTP. Para garantizar delivery confiable:
@@ -184,6 +291,15 @@ Los PSPs (MoonPay, Transak) notifican eventos de pago via webhooks HTTP. Para ga
 3. **Idempotencia**: Constraint UNIQUE en `(provider, external_id, event_type)` previene procesamiento duplicado.
 4. **Reintentos**: BullMQ con backoff exponencial (5 intentos). Dead Letter Queue para eventos que fallan persistentemente.
 5. **Reconciliacion**: Cron cada 15 minutos consulta APIs de PSPs y cruza contra registros locales para detectar webhooks perdidos.
+
+### [UPDATE April 2026] Webhook Processing — Actual
+
+The planned BullMQ-based webhook processing pipeline was **simplified**:
+1. **Ingestion + Processing**: Webhooks are processed synchronously in `webhook.routes.ts` route handlers. No BullMQ queue for webhooks.
+2. **Idempotency**: Preserved as planned — `webhook_events` table with UNIQUE constraint on `(provider, external_id, event_type)`.
+3. **Reintentos**: No BullMQ retry/backoff. PSPs retry delivery on their side if they get non-200 responses.
+4. **Dead Letter Queue**: Not implemented.
+5. **Reconciliation**: `reconciliation.service.ts` runs hourly (not every 15 minutes as planned). Called from `settlement.worker.ts`.
 
 ---
 
@@ -286,6 +402,25 @@ graph TB
 | `CTFExchange` | Polymarket exchange — validates signatures, settles trades |
 | `UMACTFAdapter` | Bridges UMA oracle resolutions to ConditionalTokens |
 | `USDC` | Circle USDC on Polygon — collateral token |
+
+### [UPDATE April 2026] Smart Contracts — Actual
+
+All 3 core contracts were built with Foundry (Solidity 0.8.28):
+- `ConditionalTokens.sol` — Gnosis CTF (ERC-1155 outcome tokens)
+- `CTFExchange.sol` — Order matching and settlement
+- `UMACTFAdapter.sol` — Oracle adapter
+
+Plus mock contracts for testing:
+- `MockUSDC.sol` — Test USDC token
+- `MockUMAOracle.sol` — Test oracle
+
+Interfaces: `IConditionalTokens.sol`, `IERC20.sol`, `IUMAOptimisticOracle.sol`
+
+**Key deviation:** The contracts are deployed on **Polygon Amoy testnet** (via Alchemy RPC), not Polygon Mainnet. On-chain settlement is not yet active in production — trades are matched and recorded off-chain but not settled on-chain. The `settlement.service.ts` exists and has the settlement logic but is not actively processing live trades.
+
+**UMA Oracle:** Not integrated in production. Market resolution is done manually by admins through the admin panel (`resolution.service.ts`).
+
+**Order lifecycle change:** EIP-712 signatures are NOT required in the current implementation. Orders are placed via authenticated API calls (JWT), not signed off-chain messages. The `signature` field was dropped from the orders table.
 
 ---
 
@@ -587,6 +722,44 @@ CREATE TABLE market_prices (
 CREATE INDEX idx_market_prices_lookup ON market_prices (market_id, outcome_id, timestamp DESC);
 ```
 
+### [UPDATE April 2026] Data Model — Actual (22 Tables)
+
+The planned schema had ~14 tables. The actual implementation using **Drizzle ORM** (not raw SQL) has **22 tables**:
+
+**Planned and built (with modifications):**
+1. `users` — Dropped `auth_method` and `brand_id` columns. Added `password_hash`, `google_id`, `sumsub_applicant_id`, `kyc_reject_reason`, `referral_code`, `referred_by`. Email is now UNIQUE.
+2. `admin_users` — Added `name`, `is_active`, `last_login_at`. Uses RBAC enum (`super_admin`, `admin`, `editor`) instead of generic `role` varchar. Dropped `totp_secret`.
+3. `markets` — Similar to plan.
+4. `outcomes` — Similar to plan.
+5. `orders` — Dropped `signature` column (no EIP-712). Added `settlement_status` enum.
+6. `trades` — Similar to plan.
+7. `positions` — Similar to plan.
+8. `market_prices` — OHLCV candles, similar to plan.
+9. `user_balances` — Similar to plan. Single currency (USDC) in practice.
+10. `ledger_entries` — Similar to plan.
+11. `payment_transactions` — Uses enums instead of varchar for type/status/provider.
+12. `webhook_events` — Similar to plan.
+
+**Added beyond the plan:**
+13. `market_tags` — Tag-based market categorization
+14. `blog_posts` — CMS for blog content (managed via admin panel)
+15. `withdrawals` — Separate withdrawal lifecycle tracking
+16. `user_payout_methods` — User payout destination methods
+17. `referrals` — Referral tracking with status enum (pending/qualified/rewarded)
+18. `push_subscriptions` — Web Push notification subscriptions
+19. `market_proposals` — Community-submitted market proposals
+20. `market_comments` — Social: comments on markets
+21. `market_reactions` — Social: reactions on markets
+22. `password_reset_tokens` — Password reset flow tokens
+
+**Dropped from plan:**
+- `brand_configs` — Not implemented as a DB table
+- `user_auth_methods` — Auth methods stored directly on `users` table (address, email, google_id)
+- `proxy_wallets` — Phase 2, not implemented
+- `admin_audit_log` — Not implemented
+
+**ORM:** Drizzle ORM with typed schema (`backend/src/db/schema.ts`) instead of raw SQL migrations. All enums defined as `pgEnum`.
+
 ### Entity Relationship Diagram
 
 ```mermaid
@@ -742,6 +915,35 @@ Tokens are issued via SIWE (Sign-In with Ethereum) flow.
 |---|---|---|---|
 | `GET` | `/prices/:marketId/candles` | Get OHLCV candle data. Query: `outcomeId`, `interval` (1m, 5m, 15m, 1h, 1d), `from`, `to`. | No |
 
+### [UPDATE April 2026] API Design — Actual Routes
+
+The plan listed 5 route groups. The actual implementation has **17 route files** (`backend/src/routes/`):
+
+| Route File | Key Endpoints | Auth |
+|---|---|---|
+| `auth.routes.ts` | SIWE nonce/verify, email register/login, Google OAuth, password reset, token refresh | Mixed |
+| `admin-auth.routes.ts` | Admin login (email + Google), separate from user auth | No (public login) |
+| `admin.routes.ts` | Dashboard stats, user management, market CRUD, KYC review, resolution | Yes (Admin) |
+| `market.routes.ts` | List/detail markets, categories, search | No |
+| `order.routes.ts` | Place/cancel orders, orderbook | Mixed |
+| `trade.routes.ts` | Trade history | No |
+| `position.routes.ts` | User positions | Yes |
+| `price.routes.ts` | OHLCV candles, current prices | No |
+| `payment.routes.ts` | MoonPay/Mercado Pago deposit initiation | Yes |
+| `withdrawal.routes.ts` | Withdrawal requests | Yes |
+| `balance.routes.ts` | User balance queries | Yes |
+| `kyc.routes.ts` | KYC status, SumSub SDK token | Yes |
+| `blog.routes.ts` | Blog posts (public read, admin write) | Mixed |
+| `referral.routes.ts` | Referral codes and tracking | Yes |
+| `push.routes.ts` | Web Push subscription management | Yes |
+| `social.routes.ts` | Market comments and reactions | Mixed |
+| `webhook.routes.ts` | PSP webhook receivers (MoonPay, Mercado Pago) | Signature validation |
+
+**Auth changes from plan:**
+- Plan: SIWE-only. Actual: SIWE + email/password + Google OAuth.
+- JWT access + refresh tokens (as planned).
+- Rate limiting implemented per-endpoint (not per-tier as planned).
+
 ### WebSocket Channels
 
 Connection: `wss://api.example.com` with Socket.io.
@@ -771,6 +973,56 @@ Authentication: pass JWT as `auth.token` on connection.
 | Unauthenticated | 30 | 2 |
 | Authenticated (tier_0) | 120 | 5 |
 | Authenticated (tier_1+) | 600 | 20 |
+
+### [UPDATE April 2026] WebSocket & Rate Limits — Actual
+
+**WebSocket channels (as built in `websocket.service.ts`):**
+- `orderbook:{marketId}` — Real-time orderbook updates
+- `trades:{marketId}` — Live trade feed
+- `prices:{marketId}` — Price tick updates
+- `notifications:{userId}` — User-specific notifications (order fills, etc.)
+
+Channels work via Socket.IO rooms with subscribe/unsubscribe events. No JWT auth on WebSocket connections in current implementation.
+
+**Rate limits:** Implemented per-endpoint in route config (e.g., auth: 10 req/min, nonce: 30 req/min). The planned tier-based rate limiting (unauthenticated/tier_0/tier_1+) was not implemented.
+
+### [UPDATE April 2026] Frontend Pages — Actual
+
+The frontend (`frontend/src/app/`) has **23 pages** using Next.js 15 App Router:
+
+| Page | Route |
+|---|---|
+| Home (landing) | `/` |
+| Markets list | `/markets` |
+| Market detail | `/markets/[id]` |
+| Event page | `/event/[slug]` |
+| Portfolio | `/portfolio` |
+| Profile | `/profile` |
+| Blog | `/blog` |
+| Blog post | `/blog/[slug]` |
+| Analytics | `/analytics` |
+| Referral | `/referral` |
+| KYC | `/kyc` |
+| Reset password | `/reset-password` |
+| Docs hub | `/docs` |
+| Getting started | `/docs/getting-started` |
+| Trading guide | `/docs/trading-guide` |
+| Account verification | `/docs/account-verification` |
+| FAQ | `/docs/faq` |
+| Market resolution | `/docs/market-resolution` |
+| Privacy policy | `/privacy` |
+| Terms of service | `/terms` |
+| Cookies policy | `/cookies` |
+| Disclaimer | `/disclaimer` |
+| AML policy | `/aml-policy` |
+
+### [UPDATE April 2026] Admin Panel — Actual
+
+Separate Vite + React app (`admin/`) deployed to Vercel (`praxis-admin.vercel.app`):
+
+**Pages:** Dashboard, Login, CreateMarket, Blog, BlogEditor, Proposals, Comments, Withdrawals, NotFound.
+
+**Auth:** Email/password + Google OAuth (separate `admin_users` table). RBAC with 3 roles: `super_admin`, `admin`, `editor`.
 
 ---
 
@@ -860,6 +1112,27 @@ graph TB
 | Redis | Upstash (or AWS ElastiCache) | 256MB, persistence enabled |
 | Blockchain RPC | Alchemy Growth | Polygon Mainnet, 300M CU/mo |
 | Monitoring | Datadog + Sentry | APM, logs, error tracking |
+
+### [UPDATE April 2026] Infrastructure — Actual
+
+| Component | Service | Notes |
+|---|---|---|
+| Frontend | **Vercel** | forka.io — Next.js 15 SSR |
+| Admin Panel | **Vercel** | praxis-admin.vercel.app — Vite + React SPA |
+| Backend API | **Railway** | Single Fastify 5 instance (no load balancer, no autoscale) |
+| Workers | **Railway** | Run in same process as backend (not separate instances) |
+| PostgreSQL | **Railway Postgres** | Managed PostgreSQL |
+| Redis | **Railway Redis** | Used for BullMQ queues, Socket.IO adapter, caching |
+| Blockchain RPC | **Alchemy** | Polygon Amoy testnet (not mainnet) |
+| Monitoring | **None** | No Datadog, Sentry, or PostHog configured |
+
+**Key infrastructure deviations:**
+1. **No load balancer or autoscaling** — single Railway instance for backend.
+2. **No separate worker instances** — settlement worker and payout worker run in the same process as the API server.
+3. **No Infura fallback** — Alchemy only.
+4. **No monitoring/observability stack** — console logging via pino.
+5. **Polygon Amoy testnet** instead of mainnet.
+6. **Admin panel** deployed as a separate Vercel project (not planned in original architecture).
 
 ---
 
@@ -1047,3 +1320,24 @@ jobs:
 | `feature/*` | Feature development | Preview (Vercel) |
 | `fix/*` | Bug fixes | Preview (Vercel) |
 | `release/*` | Release candidates | Staging |
+
+### [UPDATE April 2026] CI/CD — Actual
+
+**No CI/CD pipeline was implemented.** The entire GitHub Actions workflow described above was never created.
+
+**Actual deployment process:**
+- **Backend:** Auto-deploy from GitHub `main` branch via Railway.
+- **Frontend:** Auto-deploy from GitHub `main` branch via Vercel.
+- **Admin:** Auto-deploy from GitHub `main` branch via Vercel.
+- **Contracts:** Manual deployment via Foundry scripts.
+
+**No automated testing in CI:**
+- No ESLint/Prettier CI checks
+- No `tsc --noEmit` CI checks
+- No Vitest unit/integration tests configured
+- Contract tests exist (`forge test`) but are not run in CI
+- No staging environment — direct deploy to production on push to main
+
+**Branch strategy:** In practice, development happens directly on `main`. No `feature/*`, `fix/*`, or `release/*` branches are used systematically. The 5 repos are independent (no turborepo/monorepo tooling).
+
+**Deployment coordination:** Manual via the `/deploy` skill in Claude Code, which runs Railway CLI and Vercel CLI commands.

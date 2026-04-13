@@ -2,6 +2,8 @@
 
 > **DISCLAIMER:** Este documento contiene estimaciones y proyecciones basadas en datos publicos del mercado de prediction markets (2024-2026), benchmarks de la industria y supuestos razonables. Las cifras no constituyen garantias de rendimiento. Se recomienda validar todos los supuestos con asesores financieros y ajustar las proyecciones conforme se obtengan datos reales de operacion.
 
+> **[UPDATE April 2026]** This document was written during Phase 0 planning, before development began. The platform has since been built and deployed. Sections marked with **[UPDATE April 2026]** reflect what was actually implemented vs. what was planned. Original content is preserved intact.
+
 ---
 
 ## Tabla de Contenidos
@@ -74,6 +76,24 @@
 
 **Revenue estimado por $1M GMV (modelo hibrido): $5,000-$8,000**
 
+> **[UPDATE April 2026] — Trading Fee Model Actually Implemented:**
+>
+> The platform implemented a **simplified flat fee model** instead of the recommended hybrid (Model C):
+>
+> | Planned (Hybrid) | Implemented |
+> |---|---|
+> | 0% maker / 0.5% taker | **0.5% flat fee on all trades** (no maker/taker distinction) |
+> | 2% settlement fee on net profits | **Not implemented** — no settlement fee on winnings |
+> | $1.00 flat + gas withdrawal fee | **PIX: $0.50 flat, USDC Polygon: $0.25 flat** (lower than planned, no gas pass-through) |
+>
+> **Key differences:**
+> - The fee is calculated as `cost * 0.005` (0.5%) on every trade in `trading-panel.tsx`, applied uniformly regardless of order type (market or limit).
+> - There is **no maker/taker fee split** — the order book does not distinguish between liquidity providers and takers for fee purposes.
+> - The **settlement fee on net profits was dropped entirely**. This simplifies the model but reduces the take rate to a flat **0.5% of GMV** vs. the projected 0.5-0.8%.
+> - **Revenue per $1M GMV is now ~$5,000** (flat 0.5%), at the low end of the hybrid estimate.
+> - Withdrawal fees are significantly lower: $0.50 (PIX) and $0.25 (USDC) vs. the planned $1.00 + gas. This reduces friction but also eliminates withdrawal revenue as a meaningful line item.
+> - **Settlement is in mock mode** — trades are recorded in the database but not yet settled on-chain (Polygon mainnet). Gas costs are therefore $0 currently.
+
 ### 1.2 Market Creation Fees
 
 | Tipo de Mercado | Fee | Detalle |
@@ -84,6 +104,8 @@
 | **Mercados custom/enterprise** | $100-$500 | Resolucion customizada, SLA de soporte |
 
 **Revenue estimado mes 12:** $500-$2,000/mes (bajo volumen inicial de creacion de mercados por usuarios)
+
+> **[UPDATE April 2026]** Market creation is admin-only via the admin panel (market CRUD + status management). User-created markets and the associated fee tiers were **not implemented** in MVP. All markets are curated internally. This revenue stream is $0 and deferred to a future phase.
 
 ### 1.3 API Access Tiers
 
@@ -97,6 +119,8 @@
 **Revenue estimado mes 12:** $1,000-$5,000/mes
 **Revenue estimado mes 24:** $5,000-$25,000/mes
 
+> **[UPDATE April 2026]** No public API or API access tiers were implemented. The backend exposes REST + WebSocket APIs for the frontend and admin panel only. There is no developer portal, API keys, or tiered access. This revenue stream is $0 and deferred to a future phase.
+
 ### 1.4 Premium Features
 
 | Feature | Precio | Detalle |
@@ -108,6 +132,8 @@
 
 **Revenue estimado mes 12:** $2,000-$8,000/mes (asumiendo 2-5% de conversion a premium)
 **Revenue estimado mes 24:** $10,000-$40,000/mes
+
+> **[UPDATE April 2026]** No premium subscription features were implemented. There are no analytics tiers, alert packages, portfolio tracker subscriptions, or premium bundles. The platform is free-to-use beyond trading fees. This revenue stream is $0 and deferred to a future phase.
 
 ### 1.5 Market Making (Spread Capture)
 
@@ -126,6 +152,8 @@ La plataforma puede actuar como market maker en mercados seleccionados para:
 
 **Nota:** Esta actividad requiere capital significativo y modelos de riesgo. Se recomienda iniciar conservadoramente con max 10% del treasury y solo en mercados de alta liquidez.
 
+> **[UPDATE April 2026]** Market making by the platform was **not implemented**. There is no automated market maker, no proprietary spread capture, and no capital allocation for this purpose. The order book relies entirely on user-submitted orders with in-memory matching (price-time priority). This revenue stream is $0.
+
 ### 1.6 Data Feed Comercial (Datos como Producto)
 
 La informacion agregada de los mercados (probabilidades en tiempo real, volumen, historicos) tiene valor comercial para instituciones, medios de comunicacion, y analistas. Este revenue stream se activa en Phase 3 junto con la API publica.
@@ -142,6 +170,8 @@ La informacion agregada de los mercados (probabilidades en tiempo real, volumen,
 
 **Por que es valioso:** Los prediction markets generan la "wisdom of crowds" — probabilidades que historicamente superan a encuestas y modelos expertos. Medios como Bloomberg y Reuters ya citan datos de Polymarket. Una plataforma que empaquete esto como producto tiene un revenue stream de alto margen con costo marginal casi cero.
 
+> **[UPDATE April 2026]** Data feed comercial was **not implemented**. No data API, no data licensing, no commercial data products. Deferred to a future phase.
+
 ### 1.7 Resumen de Revenue Streams
 
 | Fuente | % Revenue Estimado (Mes 12) | % Revenue Estimado (Mes 24) |
@@ -152,6 +182,27 @@ La informacion agregada de los mercados (probabilidades en tiempo real, volumen,
 | Data feed comercial | 0% | 5-10% |
 | Market making | 10-15% | 10-15% |
 | Market creation fees | 2-5% | 3-5% |
+
+> **[UPDATE April 2026] — Revenue Streams Actually Implemented:**
+>
+> Of the 6 planned revenue streams, only **1 is active** in the MVP:
+>
+> | Revenue Stream | Planned | Status |
+> |---|---|---|
+> | Trading fees | 60-70% of revenue | **ACTIVE** — 0.5% flat per trade (sole revenue source, 100% of revenue) |
+> | Premium features | 10-15% | **NOT IMPLEMENTED** |
+> | API access | 5-10% | **NOT IMPLEMENTED** |
+> | Data feed comercial | 0% (M12) | **NOT IMPLEMENTED** |
+> | Market making | 10-15% | **NOT IMPLEMENTED** |
+> | Market creation fees | 2-5% | **NOT IMPLEMENTED** (admin-only market creation) |
+>
+> **Additional revenue-adjacent implementations not in original plan:**
+> - **Referral program**: $5 bonus per qualified referral (`referral.service.ts`). This is a cost center (user acquisition), not a revenue stream, but was implemented as a growth mechanism.
+> - **Blog CMS**: Content marketing infrastructure built into the platform for SEO/organic acquisition.
+> - **Multi-language (EN/ES/PT)**: Supports the LATAM positioning described in Section 6.2.
+> - **PWA**: Mobile distribution without app store fees — reduces CAC for mobile users.
+>
+> **Implication for financial projections:** All revenue projections in Section 4 assumed diversified revenue. With only trading fees active, the effective take rate is **0.5% of GMV** (not 0.65%), and there is no MRR from subscriptions. Revenue projections should be revised downward by ~25-35% at the same GMV levels.
 
 ---
 
@@ -206,6 +257,8 @@ Salarios estimados para equipo distribuido con base LATAM. Todos los montos son 
 | C-Suite (2 founders) | 2 | $5,000 avg | $10,000 |
 | **Total Equipo Fase 3** | | | **$78,000/mes** |
 
+> **[UPDATE April 2026]** The MVP was built with a radically leaner approach than planned. Development was driven primarily by the founder (David) with Claude Code (AI pair programming), eliminating the need for the full engineering team projected in Fase 1. No salaries were paid for CTO, Senior Fullstack, Smart Contract Dev, Frontend Dev, or DevOps roles. The actual team cost during MVP development was a fraction of the $27,500/mes projected. This dramatically changes the bootstrapping math and runway calculations.
+
 ### 2.2 Infraestructura Tech
 
 | Servicio | Proveedor | Costo Mes 1-6 | Costo Mes 7-12 | Costo Mes 13-24 |
@@ -222,6 +275,24 @@ Salarios estimados para equipo distribuido con base LATAM. Todos los montos son 
 | **Email / Comms** | Resend + Slack | $25/mes | $50/mes | $100/mes |
 | **CI/CD** | GitHub Actions | $20/mes | $50/mes | $100/mes |
 | **Total Infra** | | **$384/mes** | **$1,214/mes** | **$3,014/mes** |
+
+> **[UPDATE April 2026] — Actual Infrastructure Stack:**
+>
+> | Service | Planned | Actual |
+> |---|---|---|
+> | Frontend hosting | Vercel (Pro) | **Vercel** (forka.io) |
+> | Backend / API | Railway o AWS ECS | **Railway** (Fastify API) |
+> | Database | Supabase Pro / RDS | **Railway PostgreSQL 16** |
+> | Redis Cache | Upstash / ElastiCache | **Railway Redis 7** |
+> | RPC Nodes | Alchemy Growth | **Alchemy** (Polygon Amoy testnet only) |
+> | Indexer | The Graph / Goldsky | **Not implemented** (mock settlement) |
+> | CDN / Storage | Cloudflare + S3 | **Vercel Edge** (Next.js built-in) |
+> | Monitoring | Datadog / Sentry | **Not implemented** (pino logging only) |
+> | Email / Comms | Resend + Slack | **Resend** (email service implemented) |
+> | CI/CD | GitHub Actions | **Auto-deploy from GitHub main** (Railway + Vercel) |
+> | Admin panel | Not in original infra plan | **Vercel** (separate Vite + React app) |
+>
+> Actual infrastructure costs are likely in the $50-150/mes range during MVP, significantly below the $384/mes estimate.
 
 ### 2.3 Costos Blockchain
 
@@ -242,6 +313,8 @@ Salarios estimados para equipo distribuido con base LATAM. Todos los montos son 
 - 10,000 trades/dia = ~$50/dia en gas = ~$1,500/mes
 - 50,000 trades/dia = ~$250/dia en gas = ~$7,500/mes
 
+> **[UPDATE April 2026]** Blockchain costs are currently **$0**. Settlement is running in **mock mode** — trades are recorded in the database via `settlement.service.ts` using a `MockSettlementAdapter`, but no actual on-chain transactions occur. The platform uses Polygon Amoy testnet (not mainnet) for development. Contracts are deployed via Foundry (Solidity 0.8.28) but are not yet active for production settlement. UMA oracle integration is also not live, eliminating oracle bond costs. These costs will only materialize when mainnet settlement is enabled.
+
 ### 2.4 Compliance y Legal
 
 | Concepto | Costo Mensual (Promedio Anual) |
@@ -256,6 +329,8 @@ Salarios estimados para equipo distribuido con base LATAM. Todos los montos son 
 | **Total Compliance** | **$4,400-$11,200/mes** |
 
 *Alineado con presupuesto compliance ano 1 de Phase 0.1: $245K-$515K = $20K-$43K/mes (incluye setup inicial).*
+
+> **[UPDATE April 2026]** KYC is implemented with 3 tiers (tier_0, tier_1, tier_2) via Sumsub integration, but **mock mode is available** for development (`USE_MOCK` flags). Smart contract audits have not been performed. No D&O insurance or AML monitoring tools are in place. The legal structure (Panama/BVI) status should be cross-referenced with `01-legal-structure.md`. Actual compliance costs during MVP are minimal — Sumsub fees only apply when mock mode is off.
 
 ### 2.5 Marketing
 
@@ -295,6 +370,36 @@ La integracion con PSPs (MoonPay, Transak) para depositos fiat desde MVP introdu
 
 **Nota:** Los fees de conversion PSP (1-4.5% segun metodo de pago) son absorbidos por el usuario (pass-through), no por la plataforma. La politica de no subsidiar PSP fees es critica para preservar margenes.
 
+> **[UPDATE April 2026] — Fiat Onramp Actually Implemented:**
+>
+> Two PSPs were integrated (plus direct crypto), with 7 deposit methods total:
+>
+> | PSP | Methods | Fee Model |
+> |---|---|---|
+> | **MoonPay** (browser SDK overlay) | Card, Apple Pay, Google Pay | ~3.5% card fee (pass-through to user) |
+> | **Mercado Pago** (Checkout Pro) | PIX, Boleto, Local Debit | ~1% PIX fee (pass-through to user) |
+> | **Direct Crypto** | USDC on Polygon | 0% deposit fee |
+>
+> **Forka charges 0% deposit fee** — all PSP conversion fees are pass-through to the user, as planned.
+>
+> **Withdrawal methods (2 in MVP):**
+> - PIX: $0.50 flat fee
+> - USDC Polygon: $0.25 flat fee
+>
+> **KYC-gated deposit limits (from `limits.service.ts`):**
+> - tier_0: $100 lifetime deposit limit
+> - tier_1: $10,000/month
+> - tier_2: Unlimited
+>
+> **KYC-gated withdrawal limits (from `withdrawal.service.ts`):**
+> - tier_0: $50/day, $100/month, $50/tx
+> - tier_1: $2,000/day, $10,000/month, $2,000/tx
+> - tier_2: $25,000/day, $100,000/month, $25,000/tx
+> - Minimum withdrawal: $5
+> - Auto-approve threshold: $200 (above requires manual review)
+>
+> **Key difference from plan:** Transak was included in the payment provider enum but MoonPay and Mercado Pago are the active integrations. The PSP platform fees and fraud monitoring costs projected ($700-$6,300/mes) have not materialized at scale yet since the platform is in early deployment.
+
 ### 2.9 Resumen de Costos Mensuales por Fase
 
 | Categoria | Fase 1 (M1-6) | Fase 2 (M7-12) | Fase 3 (M13-24) |
@@ -309,6 +414,8 @@ La integracion con PSPs (MoonPay, Transak) para depositos fiat desde MVP introdu
 | **Total Anualizado** | **$225,204** (6 meses) | **$492,084** (6 meses) | **$1,459,368** (12 meses) |
 
 **Costo total estimado 24 meses: ~$2,176,656**
+
+> **[UPDATE April 2026]** Actual MVP costs are dramatically lower than projected. With AI-assisted development replacing a 6-person engineering team, minimal infrastructure costs on Railway/Vercel, zero blockchain costs (mock settlement), and no marketing spend yet, the actual monthly burn during MVP build is estimated at **$1,000-$3,000/mes** (infrastructure + tools only, excluding founder opportunity cost). The $37,534/mes Fase 1 projection was based on hiring a full team. The bootstrapping minimum of $192,000 was not needed — the MVP was built for a fraction of that amount.
 
 ---
 
@@ -384,6 +491,10 @@ La integracion con PSPs (MoonPay, Transak) para depositos fiat desde MVP introdu
 | **Optimista** | 1.0% | Con premium features + API revenue |
 
 **Target take rate: 0.65% del GMV (escenario base)**
+
+> **[UPDATE April 2026]** The actual take rate is **0.5% flat** (trading fee only, no settlement fee). This is below the 0.65% base case and closer to the conservative 0.4% scenario. The LTV calculations in Section 3.1 should be revised: multiply all "Monthly revenue per user" figures by (0.5/0.65) = 0.77x. Additionally, with no premium features or API revenue, the premium revenue contributions in LTV calculations are currently $0. The blended LTV is likely lower than the projected $52.40.
+>
+> However, the CAC could also be lower if organic/referral channels (blog CMS, PWA, referral program with $5 bonus) drive acquisition without paid marketing spend.
 
 ### 3.4 Payback Period
 
@@ -557,6 +668,15 @@ La integracion con PSPs (MoonPay, Transak) para depositos fiat desde MVP introdu
 | Breakeven alcanzado | Mes 24 | Mes 15 | Mes 9 |
 | Capital total requerido | $1.5M+ | $1.5M | $2.5M |
 
+> **[UPDATE April 2026] — Projection Assumptions That Need Revising:**
+>
+> 1. **Take rate**: All three scenarios used 0.65% hybrid take rate. Actual is 0.5% flat. Revenue columns should be multiplied by ~0.77x at equivalent GMV.
+> 2. **Revenue diversification**: Projections assumed premium features and API revenue contributing 15-25% by M12. These are $0. Revenue is 100% trading fees.
+> 3. **Cost structure**: Actual costs are 90%+ lower than projected in Fase 1 due to AI-assisted solo development. This means breakeven is achievable at much lower GMV levels than projected.
+> 4. **Fiat onramp timing**: The plan placed fiat onramp in Phase 2, but it was built into MVP (MoonPay + Mercado Pago). This is a positive deviation — the 7 deposit methods available from launch should improve the conversion funnel for non-crypto-native users.
+> 5. **Settlement costs**: $0 currently (mock mode). When mainnet settlement is enabled, the blockchain cost line items will activate.
+> 6. **The breakeven calculation fundamentally changes**: With ~$2,000/mes in actual costs (vs. $37,534 projected), the platform could break even with just $400K/mes in GMV (generating ~$2,000 in trading fees at 0.5%). The original projections required $6.5M/mes GMV to approach breakeven.
+
 ---
 
 ## 5. Fundraising Strategy
@@ -577,6 +697,8 @@ La integracion con PSPs (MoonPay, Transak) para depositos fiat desde MVP introdu
 **Con 6 meses de operacion post-launch adicionales:** $192,000 + ($82,014 x 6) - (~$20,000 revenue) = **$664,000**
 
 **Recomendacion: $500K minimo para llegar a launch + 6 meses operativos con equipo lean.**
+
+> **[UPDATE April 2026]** The MVP was built for dramatically less than the $192,000 bootstrapping minimum or the $500K recommendation. AI-assisted development (Claude Code) replaced the need for a hired engineering team during the build phase. The actual capital consumed to reach a deployable MVP is estimated at under $20,000 (infrastructure, domains, PSP setup, tools). This changes the fundraising calculus: a seed round is still valuable for growth/marketing/hiring, but the platform can operate at near-zero burn without one. The "lean startup" approach has been taken to an extreme that was not anticipated in the original plan.
 
 ### 5.2 Seed Round
 
@@ -702,6 +824,19 @@ Si se decide proceder, considerar un **"points program"** primero (sin token, si
 | API robusta | Buena pero no monetizada | Buena, monetizada | Limitada | Buena |
 | Costos operativos bajos (LATAM) | Team NYC/global (caro) | Team NYC (muy caro) | Volunteer-driven | Team Europa |
 
+> **[UPDATE April 2026]** The competitive advantages listed above have been **partially validated** by the implementation:
+> - **Multi-idioma (ES/PT nativo)**: Implemented (EN/ES/PT i18n).
+> - **KYC tiered**: Implemented (3 tiers with progressive limits).
+> - **Costos operativos bajos**: Even lower than projected — AI-assisted solo development further reduces costs vs. competitors.
+> - **Mercados LATAM-focused**: Supported by Mercado Pago integration (PIX, Boleto, Local Debit) — unique among competitors.
+> - **Premium analytics / API robusta**: NOT implemented — these differentiators are not yet available.
+>
+> **Additional competitive advantages not in original plan:**
+> - **Fiat-first onboarding**: 7 deposit methods including non-crypto methods, lowering the barrier vs. Polymarket (wallet-only).
+> - **PWA mobile distribution**: No app store dependency, instant install.
+> - **Blog CMS**: Built-in content marketing for SEO — competitors rely on external content.
+> - **Dual auth (wallet + email/Google)**: Users can onboard without a crypto wallet, unlike Polymarket.
+
 ### 6.3 Market Size & Share Analysis
 
 | Metrica | 2024 | 2025 | 2026 (Est.) |
@@ -779,6 +914,8 @@ Si se decide proceder, considerar un **"points program"** primero (sin token, si
 - Si cash position < 4 meses: congelamiento de hiring, revision de vendors
 - Si cash position < 3 meses: plan de emergencia activado, fundraising urgente
 - Si cash position < 2 meses: reestructuracion de equipo
+
+> **[UPDATE April 2026]** Treasury management policies, yield strategies, and contingency frameworks described in this section are **not implemented**. With near-zero burn rate and no significant capital deployed, treasury management is not yet a priority. The chargeback reserve and PSP settlement buffer concepts are relevant once fiat deposit volume scales, but are not yet needed. These policies should be revisited when the platform reaches meaningful GMV.
 
 ---
 
@@ -877,6 +1014,15 @@ Si se decide proceder, considerar un **"points program"** primero (sin token, si
 | **Uptime** | >99.9% | 99-99.9% | <99% |
 | **Monthly burn vs budget** | <100% | 100-115% | >115% |
 
+> **[UPDATE April 2026]** The KPI framework and reporting cadence described above are **not yet operational**. The admin panel provides basic platform stats (user counts by KYC tier, market stats), but there is no automated KPI dashboard, no alerting system, and no formal reporting cadence. The metrics definitions and targets remain valid as goals, but the infrastructure to track them needs to be built. Key metrics that CAN be tracked from existing data:
+> - GMV and trade volume (from `trades` table)
+> - User registrations and KYC tier distribution (from `users` table)
+> - Deposit/withdrawal volume by method (from `payment_transactions` and `withdrawals` tables)
+> - Revenue from trading fees (calculable from trade volume * 0.5%)
+> - Referral conversion (from `referrals` table)
+>
+> Metrics that CANNOT be tracked yet: DAU/MAU (no session tracking), retention cohorts, time on platform, LTV/CAC, ARPU.
+
 ---
 
 ## Apendice A: Glosario
@@ -921,3 +1067,48 @@ Si se decide proceder, considerar un **"points program"** primero (sin token, si
 
 *Documento preparado por la Direccion de Finanzas. Ultima actualizacion: Abril 2026.*
 *Revision recomendada: Mensual durante los primeros 12 meses de operacion, trimestral despues.*
+
+---
+
+## [UPDATE April 2026] — Executive Summary of Plan vs. Reality
+
+### What was built (MVP feature set)
+
+| Feature | Status | Source |
+|---|---|---|
+| Trading fee: 0.5% flat per trade | Implemented | `trading-panel.tsx` — `cost * 0.005` |
+| Deposit fees: 0% (PSP pass-through) | Implemented | MoonPay ~3.5% card, Mercado Pago ~1% PIX |
+| Withdrawal fees: PIX $0.50, USDC $0.25 | Implemented | `withdrawal.service.ts` FEES constant |
+| 7 deposit methods | Implemented | Card, Apple Pay, Google Pay, PIX, Boleto, Local Debit, USDC |
+| 2 withdrawal methods | Implemented | PIX, USDC Polygon |
+| KYC 3 tiers with limits | Implemented | `limits.service.ts`, `withdrawal.service.ts` |
+| Referral: $5 per qualified referral | Implemented | `referral.service.ts` REFERRAL_BONUS |
+| Settlement: mock mode | Implemented | `MockSettlementAdapter` (blockchain not on mainnet) |
+| Blog CMS | Implemented | Content marketing infrastructure |
+| Multi-language (EN/ES/PT) | Implemented | i18n |
+| PWA | Implemented | Mobile distribution |
+| Dual auth (wallet + email/Google) | Implemented | SIWE + email/password + Google OAuth |
+| Admin panel with RBAC | Implemented | 3 roles: super_admin, admin, editor |
+
+### What was NOT built (deferred from this plan)
+
+| Feature | Planned Revenue Contribution | Status |
+|---|---|---|
+| Settlement fee (2% on net profits) | Part of hybrid model | Not implemented |
+| User-created markets + fees | $500-$2,000/mes M12 | Not implemented |
+| API access tiers | $1,000-$25,000/mes | Not implemented |
+| Premium subscriptions | $2,000-$40,000/mes | Not implemented |
+| Platform market making | $3,000-$40,000/mes | Not implemented |
+| Data feed comercial | $2,000-$50,000/mes | Not implemented |
+| On-chain settlement | Required for gas revenue | Mock mode only |
+| KPI dashboard + alerting | Operational necessity | Not implemented |
+| Token/governance | Deferred per plan | Not implemented (correct) |
+
+### Key financial implications
+
+1. **Revenue is simpler**: One stream (0.5% trading fee) vs. six projected. Take rate is 0.5% vs. 0.65% projected.
+2. **Costs are radically lower**: ~$2,000/mes actual vs. $37,534/mes projected for Fase 1. AI-assisted development eliminated the need for a hired engineering team.
+3. **Breakeven GMV is much lower**: ~$400K/mes GMV needed at current costs vs. $6.5M/mes projected.
+4. **Fiat onramp is ahead of schedule**: Planned for Phase 2, built into MVP with 7 methods.
+5. **Blockchain settlement is behind schedule**: Mock mode means no gas costs but also no on-chain finality.
+6. **Fundraising needs are different**: The platform can operate near-zero burn without funding. A seed round is a growth accelerator, not a survival necessity.

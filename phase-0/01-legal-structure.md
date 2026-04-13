@@ -41,6 +41,8 @@
 - **Mejor para neutralidad fiscal pura:** Cayman Islands o BVI.
 - **Menos recomendada:** Curacao (incertidumbre regulatoria, reputacion en deterioro).
 
+> **[UPDATE April 2026]** No se ha tomado decision de jurisdiccion final ni formado ninguna entidad. La plataforma se construyo y opera en fase pre-revenue/testnet sin entity legal. La seleccion jurisdiccional y la constitucion de la entidad siguen pendientes como prerequisito para el launch a produccion.
+
 ---
 
 ## 2. Recomendacion de Estructura Corporativa
@@ -142,6 +144,8 @@ Se recomienda una estructura de dos capas que separe la gobernanza descentraliza
 | Banking setup & compliance inicial | $10,000 - $20,000 |
 | **TOTAL ESTIMADO** | **$81,000 - $150,000** |
 
+> **[UPDATE April 2026]** Ninguno de los pasos de las secciones 2.1-2.4 fue ejecutado. No se constituyo Fundacion, OpCo, ni subsidiarias. El desarrollo se realizo sin entity legal formal. La estructura multibranding tecnica si se implemento a nivel de base de datos (tabla `brand_config`) pero sin la separacion juridica recomendada. La formacion de la entidad legal es el principal bloqueante para el launch comercial.
+
 ---
 
 ## 3. Matriz de Riesgo Regulatorio
@@ -207,6 +211,8 @@ Se recomienda una estructura de dos capas que separe la gobernanza descentraliza
 | Chile (CMF) | MODERADO (3/5) | Monitoreo activo. |
 | Colombia | BAJO (2/5) | Monitoreo pasivo. |
 | Paises sanctioned | CRITICO (5/5) | Geo-blocking total obligatorio. |
+
+> **[UPDATE April 2026]** El geo-blocking fue implementado como middleware en el backend (`backend/src/middleware/geoblock.middleware.ts`). Los paises bloqueados son: US, CU, IR, KP, SY, CN, RU (ISO codes). Esto cubre EE.UU. (Tier 1 del documento), los paises sanctioned OFAC principales (Iran, Corea del Norte, Siria, Cuba), y China y Rusia (Tier 2). La implementacion usa ip-api.com para geolocation con cache Redis (24h TTL) y fail-open en caso de error. Se omitieron Myanmar, Sudan/Sur de Sudan, y las regiones ocupadas de Ucrania (Crimea/Donetsk/Luhansk — estas se manejan a nivel KYC ya que comparten IPs ucranianas). No se implementaron las capas adicionales recomendadas (VPN/proxy detection, phone number verification, wallet analysis via Chainalysis/Elliptic, behavioral monitoring). El geo-blocking se desactiva en desarrollo (NODE_ENV !== production). Brasil, UK, Francia, Alemania y Paises Bajos (Tier 2/3 del documento) NO estan bloqueados — la decision fue permitir acceso desde LATAM y Europa.
 
 ---
 
@@ -280,6 +286,8 @@ La Plataforma no esta registrada como bolsa de valores, mercado de
 derivados, agente de bolsa, corredor, ni ningun otro intermediario
 financiero regulado en ninguna jurisdiccion.
 ```
+
+> **[UPDATE April 2026]** Los Terminos de Servicio fueron implementados y estan live en la plataforma (`frontend/src/content/legal/terms-of-service.mdx`), accesibles en `/terms`. Incluyen los disclaimers recomendados sobre "information market" (no gambling) y "no securities". Junto con los ToS, las siguientes paginas legales tambien estan live: Privacy Policy (`/privacy`), Risk Disclaimer (`/disclaimer`), AML Policy (`/aml-policy`), Cookie Policy (`/cookies`). Todo el contenido legal esta disponible en tres idiomas (EN/ES/PT) via el sistema de internacionalizacion (`frontend/src/locales/{en,es,pt}/legal.json`). La entidad juridica en los documentos aun no esta definida (pendiente de la formacion de entity).
 
 #### 4.2.3 Asuncion de Riesgo
 
@@ -469,6 +477,8 @@ con restricciones de transferencia seran protegidos mediante:
 | Comunicaciones de soporte | 3 anos |
 | Cookies y analytics | Segun consentimiento, maximo 13 meses |
 
+> **[UPDATE April 2026]** La Privacy Policy fue implementada y esta live en `/privacy` (`frontend/src/content/legal/privacy-policy.mdx`), disponible en EN/ES/PT. Adopta estandares alineados con GDPR como se recomendo. Tambien se implemento la Cookie Policy como documento separado (`/cookies`). No se designo un DPO (Data Protection Officer) formal. Las categorias de datos recopilados se alinean con lo descrito en la seccion 5.3.1: datos de registro, KYC (tiers 1 y 2), transaccionales, y tecnicos (IP, dispositivo). Los periodos de retencion y los mecanismos de transferencia internacional de datos no han sido formalizados a nivel contractual (SCCs pendientes).
+
 ---
 
 ## 6. Requisitos de Geo-blocking
@@ -570,6 +580,16 @@ El geo-blocking debe implementarse en multiples capas:
 
 **Recomendacion:** Sumsub o Veriff para fase inicial por balance de cobertura, costo, y facilidad de integracion. Migrar a Onfido o Jumio si se requiere compliance mas riguroso para mercados regulados.
 
+> **[UPDATE April 2026]** El sistema de KYC fue implementado con 3 tiers, pero con diferencias significativas respecto a la recomendacion original:
+>
+> **Tier 0 (implementado diferente):** En el documento original, Tier 0 era acceso anonimo sin cuenta ni depositos. En la implementacion, Tier 0 SI permite crear cuenta y depositar hasta $100 (lifetime), pero NO permite retirar. Esto fue una decision deliberada para reducir la friccion de onboarding — el usuario puede probar la plataforma con un deposito pequeno antes de completar KYC.
+>
+> **Tier 1 (implementado con ajustes):** Se mantiene el limite de $10,000/mes para depositos. No requiere imagen de documento de identidad — solo datos personales autodeclarados (nombre, fecha de nacimiento, pais). Retiros habilitados con limites: $2,000/dia, $10,000/mes, $2,000 por transaccion.
+>
+> **Tier 2 (implementado como recomendado):** Requiere documento de identidad con foto + selfie/liveness + comprobante de domicilio. Depositos ilimitados. Retiros con limites altos: $25,000/dia, $100,000/mes, $25,000 por transaccion.
+>
+> **Proveedor:** Se eligio **Sumsub** como recomendado. Integrado via API para creacion de applicant y SDK web para captura de documentos (`backend/src/services/sumsub.service.ts`, `frontend/src/components/kyc/sumsub-widget.tsx`). Modo mock disponible para desarrollo. Los webhooks de Sumsub se procesan automaticamente para aprobar/rechazar KYC.
+
 ---
 
 ## 8. AML/CFT Framework
@@ -638,6 +658,32 @@ El framework se alinea con:
 | Multiples cuentas | Mismo dispositivo, IP, o documento vinculado a mas de 1 cuenta | Flag. Investigacion. Posible cierre de cuentas duplicadas. |
 | PEP detected | Resultado positivo en screening PEP | EDD obligatorio. Aprobacion del MLRO para mantener cuenta. Monitoreo reforzado. |
 | Jurisdiccion de alto riesgo | Usuario de pais en grey list GAFI | EDD obligatorio. Restricciones de limites. |
+
+> **[UPDATE April 2026]** El framework AML/CFT fue parcialmente implementado, enfocandose en controles automatizados de retiro en lugar de la estructura organizacional completa:
+>
+> **Implementado — Controles anti-fraude en retiros** (`backend/src/services/withdrawal.service.ts`):
+> - `deposit_within_24h`: flag si hubo deposito en las ultimas 24 horas (cooling period)
+> - `low_wagering`: flag si el monto total apostado es menor al total depositado (1x rollover requirement)
+> - `velocity`: flag si hay 3+ solicitudes de retiro en 24 horas
+> - `new_account`: flag si la cuenta tiene menos de 48 horas
+> - `first_withdrawal`: flag si es el primer retiro del usuario
+> - Auto-aprobacion solo para retiros <= $200 con cero fraud flags y que no sean first withdrawal. Todo lo demas va a cola de revision manual en el admin panel.
+>
+> **Implementado — Limites de retiro por tier:**
+> - tier_0: $50/dia, $100/mes (en la practica bloqueado por `limits.service.ts`)
+> - tier_1: $2,000/dia, $10,000/mes
+> - tier_2: $25,000/dia, $100,000/mes
+>
+> **NO implementado:**
+> - Roles MLRO/Deputy MLRO (no hay personal de compliance)
+> - Compliance Committee
+> - Screening automatizado contra listas de sanciones (OFAC SDN, EU Consolidated, etc.)
+> - Blockchain analytics (Chainalysis/Elliptic/TRM Labs)
+> - Travel Rule compliance
+> - EDD para PEPs o jurisdicciones de alto riesgo
+> - Sistema formal de STR/SAR
+> - Programa de capacitacion AML
+> - Estas carencias son aceptables en fase testnet pero deben resolverse antes del launch comercial.
 
 ### 8.4 Reporte de Actividad Sospechosa (STR/SAR)
 
@@ -712,6 +758,18 @@ Todos los registros de compliance deben mantenerse por un minimo de:
 | Semana 14-18 | Auditoria de seguridad y compliance pre-launch | 4 semanas |
 | Semana 16-20 | Soft launch (beta cerrado) con compliance activo | 4 semanas |
 
+> **[UPDATE April 2026]** Estado de ejecucion del cronograma:
+> - Seleccion de jurisdiccion: PENDIENTE
+> - Incorporacion de entidades: PENDIENTE
+> - Redaccion de ToS y Privacy Policy: COMPLETADO (live en forka.io en 3 idiomas)
+> - Seleccion e integracion KYC: COMPLETADO (Sumsub, 3 tiers)
+> - Implementacion de geo-blocking: COMPLETADO (middleware, 7 paises bloqueados)
+> - Contratacion de MLRO: PENDIENTE
+> - Integracion de blockchain analytics: PENDIENTE
+> - Testing de KYC/AML flow: PARCIAL (tests unitarios existen, no hay auditoria formal)
+> - Auditoria de seguridad pre-launch: PENDIENTE
+> - Soft launch: la plataforma esta en testnet (contratos en Polygon Amoy, chain ID 80002). Los smart contracts (ConditionalTokens, CTFExchange, UMACTFAdapter) estan deployed en testnet pero el settlement service del backend no esta conectado a ellos todavia.
+
 ## Anexo B: Presupuesto Estimado de Compliance (Ano 1)
 
 | Item | Costo Estimado (USD) |
@@ -725,6 +783,8 @@ Todos los registros de compliance deben mantenerse por un minimo de:
 | Capacitacion | $5,000 - $10,000 |
 | Herramientas tech (geo-blocking, VPN detection) | $10,000 - $25,000 |
 | **TOTAL ESTIMADO ANO 1** | **$245,000 - $515,000** |
+
+> **[UPDATE April 2026]** De este presupuesto, los unicos costos incurridos hasta la fecha corresponden a herramientas tech: Sumsub (KYC), ip-api.com (geo-blocking gratuito en free tier), y desarrollo interno de los controles AML automatizados. No hay counsel legal contratado, MLRO designado, ni proveedores de blockchain analytics o sanctions screening. El grueso de este presupuesto sera necesario al momento de la formacion de la entidad y el launch comercial.
 
 ---
 
@@ -747,6 +807,19 @@ Flujo PROHIBIDO:
 ```
 
 **Justificacion:** Si Praxis recibe, custodia, o transmite fondos fiat (incluso transitoriamente), se activan obligaciones de Money Transmitter (EE.UU./FinCEN), Electronic Money Institution (EU/PSD2), o Institucion de Pago (Brasil/BCB) que requieren licencias especificas, capital regulatorio, y supervision continua. Al interactuar solo con USDC post-conversion, Praxis mantiene su clasificacion como plataforma crypto-native.
+
+> **[UPDATE April 2026]** El principio de "no tocar fiat" se implemento tal como se recomendo. Los PSPs integrados son:
+>
+> - **MoonPay**: para depositos con tarjeta (card), Apple Pay, Google Pay. Integrado via browser SDK overlay y signed URLs. Convierte fiat a USDC antes de que los fondos lleguen a Forka.
+> - **Mercado Pago**: para depositos via PIX, boleto y tarjeta de debito (Checkout Pro). Orientado a LATAM, especialmente Brasil.
+> - **Crypto directo**: depositos en USDC en Polygon.
+>
+> Para retiros, los metodos implementados son PIX (via Mercado Pago Payouts API, `backend/src/services/payout.service.ts`) y USDC Polygon. Los retiros tienen fees: PIX $0.50, USDC Polygon $0.25.
+>
+> **Diferencias vs recomendacion:**
+> - Se decidio NO excluir BRL/Brasil como recomendaba la seccion 9.3. Brasil es un mercado target de Forka; Mercado Pago (PIX) esta integrado como PSP principal para ese mercado. Esta es una decision consciente de riesgo regulatorio que requerira monitoreo legal.
+> - Se excluyeron USD como recomendado (zero-nexo con EE.UU.). La moneda base interna es USDC; EUR se acepta via MoonPay.
+> - Transak fue contemplado en el schema de DB como opcion de PSP (`paymentProviderEnum`) pero no esta integrado activamente.
 
 ### 9.2 Requisitos para PSPs
 
@@ -828,3 +901,5 @@ Cada marca debe operarse a traves de una entidad juridica separada (subsidiary d
 ### 10.3 Riesgo Principal: Piercing the Corporate Veil
 
 Si un regulador determina que las multiples marcas son una unica operacion (mismos directores, cuentas, oficina), puede levantar el velo societario. Para evitar esto: directores distintos (al menos parcialmente), cuentas bancarias/wallets separadas, decision-making documentado, board minutes independientes, contratos inter-company a precios de mercado.
+
+> **[UPDATE April 2026]** La infraestructura tecnica de multibranding se implemento (tabla `brand_config` en la base de datos, soporte de temas light/dark, i18n EN/ES/PT). Actualmente solo la marca Forka esta activa en MVP. La separacion juridica entre marcas (entidades separadas, directores distintos, etc.) no se implemento ya que no existe aun la primera entidad legal. Si se deciden lanzar marcas adicionales, la estructura juridica recomendada en esta seccion debera implementarse.
