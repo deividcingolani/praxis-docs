@@ -1,7 +1,7 @@
 # Forka — Product Backlog
 
 > Actualizado: 12 abril 2026
-> Sprint actual: Sprint 2 (14–25 abril)
+> Sprint actual: Sprint 3 (28 abril–9 mayo)
 > Objetivo del sprint: **Cerrar los bugs que pierden plata y habilitar el flujo de fondos**
 
 ---
@@ -44,6 +44,9 @@
 | D32 | Session persistence | P1 | S | |
 | D33 | market_tags table | P1 | S | Market categorization |
 | D34 | PSP webhook endpoints + signature validation | P0 | M | /webhooks/moonpay + HMAC + idempotency (synchronous processing) |
+| D35 | On-chain Event Indexer | P0 | M | Implementado en `indexer.service.ts` — polling 5s, 6 eventos |
+| D36 | Background Workers (BullMQ) | P1 | M | Implementado en `settlement.worker.ts` — settle-trade + settle-batch jobs |
+| D37 | Blockchain Transaction Manager | P0 | M | Implementado en `blockchain.service.ts` — nonce mgmt, gas estimation, retry |
 
 ---
 
@@ -80,13 +83,20 @@
 
 ### Sprint 3 — On-chain settlement + security (estimado)
 
-| # | Item | P | Esfuerzo | Deps | Notas |
-|---|------|---|----------|------|-------|
-| B1 | Settlement Service + Blockchain TX Manager | P0 | L | W2 | Nonce mgmt, gas estimation, retry logic |
-| B2 | On-chain Event Indexer | P0 | M | W2 | Escuchar eventos de contratos, sync blockchain ↔ DB |
-| B5 | Campos faltantes en `users` table | P1 | XS | — | email UNIQUE constraint |
-| B6 | Background Workers (BullMQ) | P1 | M | B1 | Settlement worker |
-| B7 | Security controls (CHECK constraints, rate limiting) | P1 | M | — | Balance CHECK, rate limiting por endpoint, CSRF en OAuth |
+> **Decisión: Por qué mock primero.** Cada contrato tiene una versión mock funcional en paralelo. El flag `BLOCKCHAIN_ENABLED` sigue siendo el switch. Esto protege la velocidad del equipo: el path mock permite testear toda la lógica de settlement, workers y reconciliación sin depender del deploy de contratos ni de faucets testnet. Cuando el path real esté listo, solo se cambia el adapter.
+
+| # | Item | P | Esfuerzo | Deps | Estado | Notas |
+|---|------|---|----------|------|--------|-------|
+| B1.0 | Extraer MockSettlementAdapter como clase (adapter pattern) | P0 | S | — | ✅ DONE | ISettlementAdapter → MockAdapter / BlockchainAdapter, factory por flag |
+| B1.1 | Tests del mock path (Vitest) | P0 | S | B1.0 | ✅ DONE | 11 tests passing — guardián del mock path |
+| B1.4 | `settlementStatus` en schema de trades | P0 | XS | — | ✅ DONE | pgEnum: pending → submitted → confirmed / failed |
+| B1.2 | Deploy ConditionalTokens + CTFExchange + UMACTFAdapter a Amoy | P1 | M | POL faucet | Pendiente | Deploy script ya existe, 27/27 contract tests passing |
+| B1.3 | Implementar BlockchainSettlementAdapter (path real) | P1 | L | B1.0, B1.2 | Pendiente | Misma interface que mock, fillOrder real |
+| B1.5 | Tests del blockchain path (testnet E2E) | P1 | M | B1.2, B1.3 | Pendiente | Create market → trade → settle → verify on-chain |
+| B1.6 | Stuck TX monitor | P2 | S | — | ✅ DONE | Cron 1 min, detecta trades stuck >5min, reset o confirm. 2 tests |
+| B1.7 | Reconciliation cron | P2 | M | — | ✅ DONE | Cron 1 hora, verifica txHash vs on-chain, mock mode auto-confirms. 3 tests |
+| B5 | Campos faltantes en `users` table | P1 | XS | — | Pendiente | email UNIQUE constraint |
+| B7 | Security controls (CHECK constraints, rate limiting) | P1 | M | — | Pendiente | Balance CHECK, rate limiting por endpoint, CSRF en OAuth |
 
 ### Sprint 4 — Compliance + admin improvements
 
@@ -142,6 +152,9 @@ La audiencia viene de Blaze — entienden apuestas, esperan poder depositar y op
 ### Por qué Auth dual no está en este sprint
 SIWE funciona. Los early adopters crypto pueden operar. Auth dual (email/Google) es P1 porque desbloquea la audiencia fiat de Blaze, pero sin el flujo de fondos resuelto, no importa cómo se autentiquen — no pueden hacer nada útil. **UPDATE: Auth dual now DONE.**
 
+### Por qué mock primero (adapter pattern) en Settlement
+Cada contrato tiene una versión mock funcional en paralelo. El flag `BLOCKCHAIN_ENABLED` determina qué adapter se usa. Ventajas: (1) el equipo puede desarrollar y testear toda la lógica de settlement, workers y reconciliación sin depender del deploy de contratos ni de faucets testnet; (2) en producción, si la blockchain tiene problemas, el mock adapter sirve como fallback documentado; (3) los tests unitarios corren contra el mock path sin infraestructura externa. Cuando el path real (`BlockchainSettlementAdapter`) esté listo, solo se cambia el adapter.
+
 ### Por qué tests no están en este sprint
 Zero tests es un riesgo alto pero no un blocker de funcionalidad. Los tests de balance y webhooks son más valiosos cuando el Balance Service y Payment Service existan. Sprint 5 tiene un bloque dedicado a testing.
 
@@ -155,6 +168,6 @@ No necesitás admin panel para el testnet. Lo necesitás para mainnet cuando hay
 | Sprint | Outcome esperado |
 |--------|-----------------|
 | Sprint 2 (actual) | Un usuario puede depositar crypto, crear órdenes con balance real, y cada movimiento queda en el ledger |
-| Sprint 3 | Trades se liquidan on-chain. Security controls implementados |
+| Sprint 3 | Settlement con adapter pattern: mock path 100% funcional con tests, blockchain path implementado contra Amoy testnet. Security controls implementados |
 | Sprint 4 | KYC real, geo-blocking, admin enhancements (more roles, audit log, payment approval) |
 | Sprint 5 | Plataforma lista para beta cerrada con charts, real-time, y test coverage mínimo |
