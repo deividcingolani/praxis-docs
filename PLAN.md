@@ -1,4 +1,4 @@
-# Plan: Plataforma de Prediction Markets (tipo Polymarket)
+# Plan: Forka — Plataforma de Prediction Markets (tipo Polymarket)
 
 ## Contexto
 
@@ -18,26 +18,23 @@ Polymarket usa: Polygon + Gnosis CTF + CLOB híbrido (órdenes off-chain, settle
 | Collateral | USDC | Stablecoin estándar, alta liquidez |
 | Oracle | UMA Optimistic Oracle V3 | Sistema de disputa robusto |
 | Backend | Node.js + TypeScript + Fastify | 2x más rápido que Express, type-safe |
-| Base de datos | PostgreSQL 16 + Prisma | ACID para datos financieros |
-| Cache/PubSub | Redis 7 + BullMQ | Order book, real-time, jobs |
+| Base de datos | PostgreSQL 16 + Drizzle ORM | ACID para datos financieros |
+| Cache/PubSub | Redis 7 | Order book, real-time |
 | Frontend | Next.js 15 + TypeScript | SSR para SEO, App Router |
 | Charts | TradingView Lightweight Charts | El mismo que usa Polymarket |
-| UI | Tailwind CSS + Radix UI | Accesible, performante |
+| UI | Tailwind CSS v4 | Performante |
 | Wallet | wagmi v2 + viem + RainbowKit | Estándar Web3 para React |
 | State | Zustand + TanStack Query | Ligero, sin boilerplate |
+| Payments | MoonPay + Mercado Pago | Fiat onramp (Card, Apple Pay, Google Pay, LATAM) |
 
-### Estructura del monorepo
+### Estructura del proyecto (5 repos separados)
 
 ```
-polymarket/
-  packages/
-    contracts/        -- Foundry: smart contracts Solidity
-    backend/          -- Fastify API server
-    frontend/         -- Next.js web app
-    shared/           -- Tipos TS compartidos, ABIs
-    sdk/              -- SDK cliente para terceros
-  docs/               -- Arquitectura, API specs
-  scripts/            -- Deploy, migraciones, seeds
+backend/          -- Fastify API server (GitHub: deividcingolani/praxis-backend, Deploy: Railway)
+frontend/         -- Next.js 15 web app (GitHub: deividcingolani/praxis-frontend, Deploy: Vercel forka.io)
+admin/            -- Vite + React admin panel (GitHub: deividcingolani/praxis-admin, Deploy: Vercel)
+contracts/        -- Foundry: smart contracts Solidity (GitHub: deividcingolani/praxis-contracts)
+docs/             -- Project documentation (GitHub: deividcingolani/praxis-docs)
 ```
 
 ---
@@ -61,10 +58,11 @@ polymarket/
 - Análisis competitivo: Polymarket, Kalshi, Azuro, Augur
 
 ### 0.3 Identidad de Marca — `marketing` + `ux-designer` (2 sem)
-- Nombre, dominio, redes sociales
+- Nombre: Forka (domain: forka.io, Twitter: @Forkad2026)
 - Brand guidelines (logo, colores, tipografía, tono)
 - Posicionamiento y propuesta de valor
 - Estrategia de comunidad pre-launch (Discord, Twitter/X)
+- Multi-branding config, i18n (EN/ES/PT), light/dark theme
 
 ### 0.4 Arquitectura Técnica — `tech-lead` (2 sem, en paralelo)
 - Documento de arquitectura con diagramas
@@ -73,7 +71,7 @@ polymarket/
 - Diseño de API (REST + WebSocket)
 - **Abstracción PaymentProvider**: interfaz común para crypto (Polygon/USDC) y fiat (PSP futuro). El motor de trading opera en unidades internas normalizadas, agnóstico al origen del dinero
 - **Preparación multibranding**: arquitectura multi-tenant por configuración (`brand_config`: currencies permitidas, mercados, KYC requerido, tema). No implementar frontends múltiples aún, solo asegurar que ningún componente asuma una sola marca
-- Setup del monorepo
+- Setup de repos separados (backend, frontend, admin, contracts, docs)
 - Pipeline CI/CD
 
 ---
@@ -90,10 +88,10 @@ polymarket/
 ### 1.2 Backend Services — `backend-dev` (7 sem) → depende de 0.4, 1.1
 - **User Service** (sem 5-6): Auth JWT + SIWE, wallet, KYC stub
 - **Market Service** (sem 6-8): CRUD mercados, estados, categorías, búsqueda full-text
-- **Order Service + Matching Engine** (sem 7-10): Order book in-memory + Redis, matching price-time priority, EIP-712, WebSockets
+- **Order Service + Matching Engine** (sem 7-10): Order book in-memory, matching price-time priority, EIP-712, WebSockets
 - **Settlement Service** (sem 10-12): Tx manager (nonce, gas, retry), eventos on-chain, resolución
 - **Price Service** (sem 8-10): Mid-price, OHLCV candles, broadcast WebSocket
-- **Payment Service** (sem 10-12): Implementación de PaymentProvider para crypto (deposit/withdraw USDC vía wallet). Integración con fiat PSP (MoonPay, Transak, o Ramp Network) para deposit con tarjeta/bank transfer → conversión automática a USDC. Modelo de balance interno multi-currency (`user_balance` con `currency_type` y `source`)
+- **Payment Service** (sem 10-12): MoonPay (Card, Apple Pay, Google Pay — browser SDK overlay) + Mercado Pago (Checkout Pro — LATAM fiat) + Crypto (USDC on Polygon). Deposit/withdrawal flows with KYC-gated limits. Modelo de balance interno (`user_balances` con available + locked)
 - **API Gateway**: OpenAPI docs, validación, CORS, rate limiting, logging (Pino)
 
 ### 1.3 Frontend — `frontend-dev` (6 sem) → depende de 0.4, 1.2, 0.3
@@ -121,16 +119,24 @@ polymarket/
 
 **CRÍTICO: Estos controles deben estar implementados ANTES del primer depósito fiat en mainnet.**
 
-- **PSP Webhook Security**: Validar firma criptográfica de cada webhook (HMAC-SHA256 MoonPay, RSA Transak). Tabla `webhook_events` con idempotency key (UNIQUE constraint). Verificación server-to-server post-webhook. IP allowlist del PSP. Rechazar webhooks con timestamp > 5 min
+- **PSP Webhook Security**: Validar firma criptográfica de cada webhook (HMAC-SHA256 MoonPay). Tabla `webhook_events` con idempotency key (UNIQUE constraint). Verificación server-to-server post-webhook. IP allowlist del PSP. Rechazar webhooks con timestamp > 5 min
 - **Balance Integrity**: Toda operación de balance en transacción PostgreSQL con `SELECT FOR UPDATE`. Constraints `CHECK (available >= 0 AND locked >= 0)`. Tabla `ledger_entries` con double-entry bookkeeping. Reconciliación automática cada hora. Usar `decimal.js` en TypeScript — prohibir `number` para montos
 - **Auth Dual Security**: Account linking requiere verificación de ownership de ambos métodos. Tabla `user_auth_methods` (un user, múltiples auth methods). CSRF protection en OAuth flows. Magic links: expiración 10 min, single-use, rate limit 3/hora
-- **Principio fiat inamovible**: Praxis NUNCA toca fiat directamente. Flujo obligatorio: Usuario → PSP → Conversión a USDC → Wallet Praxis. Si fiat pasa por cuentas de Praxis = Money Transmitter license requerida
+- **Principio fiat inamovible**: Forka NUNCA toca fiat directamente. Flujo obligatorio: Usuario → PSP → Conversión a USDC → Wallet Forka. Si fiat pasa por cuentas de Forka = Money Transmitter license requerida
 
-### 1.7 Admin Panel (repo separado) — `backend-dev` + `frontend-dev` (3 sem) → depende de 1.2
+### 1.7 Admin Panel (separate repo: admin/) — `backend-dev` + `frontend-dev` (3 sem) → depende de 1.2
 
-**El admin es una aplicación separada del frontend público.** Auth por email+password y Google (NO wallet). Sistema RBAC con roles granulares.
+**El admin es una aplicación separada del frontend público (Vite + React).** Auth por email+password y Google (NO wallet). Sistema RBAC.
 
-#### Roles
+#### Current State (implemented)
+- **Auth**: email+password + Google OAuth, separate `admin_users` table
+- **RBAC**: 3 roles implemented (super_admin, admin, editor)
+- **Dashboard**: Platform stats
+- **Markets**: CRUD + status management + resolution
+- **Users**: User listing
+- **KYC**: Approve/reject
+
+#### Planned Roles (full RBAC)
 
 | Rol | Permisos |
 |---|---|
@@ -141,21 +147,11 @@ polymarket/
 | **Support** | Ver usuarios (read-only), ver transacciones, gestionar tickets. NO puede modificar balances |
 | **Viewer** | Read-only de dashboards y métricas. Sin acceso a datos personales de usuarios |
 
-#### Funcionalidades ABM
-
-- **Mercados**: CRUD completo, resolución manual, pausar/reanudar trading, editar reglas de resolución
-- **Usuarios**: Búsqueda, ver detalle (trades, balances, KYC status), suspender cuenta, ajustar KYC tier
-- **KYC Review**: Cola de submissions pendientes, aprobar/rechazar con motivo, historial de decisiones
-- **Payments**: Ver depósitos/retiros, aprobar withdrawals > threshold, investigar transacciones sospechosas
-- **Dashboards**: GMV, revenue, usuarios activos, retención, volumen por mercado, métricas por brand
-- **Configuración**: Brand configs, fee structure, KYC limits, geo-blocking rules, PSP settings
-- **Audit Log**: Registro inmutable de toda acción admin (quién hizo qué, cuándo)
-
-#### Stack Admin
-- Frontend: React + Tailwind (o Retool/AdminJS para MVP rápido)
-- Auth: email+password con bcrypt/argon2 + Google OAuth + 2FA obligatorio para Super Admin y Finance
-- API: Endpoints separados bajo `/admin/` con middleware de role check
-- Tabla `admin_users` separada de `users` (los admin no son traders)
+#### Planned Features (not yet implemented)
+- Payment/withdrawal approval UI
+- Audit log (registro inmutable de toda acción admin)
+- 2FA obligatorio para Super Admin y Finance
+- Configuration UI (brand configs, fee structure, KYC limits, geo-blocking rules, PSP settings)
 
 **Milestone: Testnet launch semana 14, Mainnet MVP semana 18**
 
@@ -282,13 +278,13 @@ polymarket/
 | Manipulación de oracle | Baja | Crítico | Mecanismo de disputa UMA, override manual |
 | Dependencia de persona clave | Media | Medio | Documentación, code reviews |
 | Congestión de Polygon | Baja | Medio | Retry logic, degradación graceful |
-| Fiat PSP restricciones por país | Media | Alto | Integrar 2+ PSPs (MoonPay + Transak), fallback entre ellos, KYC asimétrico crypto/fiat |
+| Fiat PSP restricciones por país | Media | Alto | Integrar 2+ PSPs (MoonPay + Mercado Pago), fallback entre ellos, KYC asimétrico crypto/fiat |
 | Fragmentación de liquidez por marca | Baja | Medio | Order book compartido único, multibranding solo en frontend |
 | Proxy wallet key compromise | Media | Crítico | HSM/KMS obligatorio (AWS KMS), hot/cold separation, circuit breaker de withdrawals |
 | PSP webhook forgery | Media | Crítico | Signature validation, idempotency table, server-to-server verification, IP allowlist |
 | Balance manipulation (race condition) | Media | Alto | SELECT FOR UPDATE, CHECK constraints, double-entry ledger, reconciliación automática |
 | Double-spend por falta de balance check | Alta | Crítico | Lock de balance en creación de orden. `UPDATE WHERE available >= amount` atómico |
-| Clasificación como Money Transmitter | Media | Crítico | Praxis NUNCA toca fiat. Solo flujo PSP→USDC. No aceptar USD ni BRL |
+| Clasificación como Money Transmitter | Media | Crítico | Forka NUNCA toca fiat. Solo flujo PSP→USDC. No aceptar USD ni BRL |
 | Chargebacks en depósitos fiat | Media | Alto | 3DS obligatorio, periodo retención 14 días, chargeback reserve 2-3% volumen fiat |
 | Adverse selection fiat vs crypto | Media | Medio | Slippage protection en UI fiat, monitoreo PnL por segmento, educación in-app |
 
@@ -307,13 +303,12 @@ polymarket/
 
 ---
 
-## Archivos Críticos a Crear Primero
+## Archivos Críticos
 
-- `packages/contracts/src/CTFExchange.sol` — Contrato core de exchange
-- `packages/backend/src/services/order-matching-engine.ts` — Motor de matching (más crítico para performance)
-- `packages/backend/src/services/settlement-service.ts` — Puente entre matching off-chain y settlement on-chain
-- `packages/shared/src/types/index.ts` — Tipos compartidos que fuerzan consistencia
-- `packages/frontend/src/app/markets/[id]/page.tsx` — Página de detalle de mercado (más tráfico)
+- `contracts/src/CTFExchange.sol` — Contrato core de exchange
+- `backend/src/services/order-matching-engine.ts` — Motor de matching (más crítico para performance)
+- `backend/src/services/settlement-service.ts` — Puente entre matching off-chain y settlement on-chain
+- `frontend/src/app/markets/[id]/page.tsx` — Página de detalle de mercado (más tráfico)
 
 ## Verificación End-to-End
 

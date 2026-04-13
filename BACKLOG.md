@@ -1,4 +1,4 @@
-# Praxis — Product Backlog
+# Forka — Product Backlog
 
 > Actualizado: 12 abril 2026
 > Sprint actual: Sprint 2 (14–25 abril)
@@ -12,7 +12,7 @@
 |---|------|---|----------|-------|
 | D1 | Estructura legal + jurisdicciones | P0 | L | 5 jurisdicciones analizadas, KYC tiers, AML, ToS |
 | D2 | Business model + unit economics | P0 | L | Fee structure, proyecciones 24 meses |
-| D3 | Brand identity (Praxis) | P1 | M | Guidelines, GTM, personas |
+| D3 | Brand identity (Forka) | P1 | M | Guidelines, GTM, personas, multi-branding config, i18n (EN/ES/PT) |
 | D4 | Arquitectura técnica + data model | P0 | L | Diagramas, API design, infra |
 | D5 | Smart contracts (CTF + Exchange + Oracle) | P0 | XL | 27/27 tests passing |
 | D6 | Auth Service (SIWE + JWT) | P0 | M | |
@@ -26,7 +26,7 @@
 | D14 | Frontend: Market detail + trading panel | P0 | L | |
 | D15 | Frontend: Portfolio + KYC + legal pages | P1 | M | |
 | D16 | Backend deploy (Railway) | P0 | S | Health OK, DB + Redis connected |
-| D17 | Frontend deploy (Vercel) | P0 | S | Connected to backend |
+| D17 | Frontend deploy (Vercel) | P0 | S | Connected to backend, forka.io |
 | D18 | DB schema pushed to production | P0 | XS | |
 | D19 | `users.address` nullable | P0 | XS | Fiat-only users desbloqueados |
 | D20 | `BLOCKCHAIN_ENABLED` flag | P1 | XS | Blockchain features off hasta deploy |
@@ -34,6 +34,16 @@
 | D22 | Balance verification en matching engine | P0 | S | lockFunds en createOrder, unlockFunds en cancelOrder |
 | D23 | Matching engine DB transaction wrapping | P0 | S | Atomicidad en matchOrders |
 | D24 | Self-trade prevention fix | P0 | XS | Skip pair en vez de bloquear book |
+| D25 | Auth dual (email/password + Google OAuth) | P1 | L | user_auth_methods table, account linking |
+| D26 | Frontend AuthModal dual | P1 | M | Onboarding email/Google + wallet |
+| D27 | Admin Panel (Vite + React) | P1 | XL | Dashboard, market CRUD, user listing, KYC review |
+| D28 | Admin auth (email+password + Google OAuth) | P1 | M | Separate admin_users table |
+| D29 | PSP Integration: MoonPay browser SDK | P0 | L | Signed URLs, Card/Apple Pay/Google Pay |
+| D30 | PSP Integration: Mercado Pago Checkout Pro | P0 | L | LATAM fiat onramp |
+| D31 | Deposit limits (KYC-tier-based) | P0 | M | tier_0=$100 lifetime, tier_1=$10K/month, tier_2=unlimited |
+| D32 | Session persistence | P1 | S | |
+| D33 | market_tags table | P1 | S | Market categorization |
+| D34 | PSP webhook endpoints + signature validation | P0 | M | /webhooks/moonpay + HMAC + idempotency (synchronous processing) |
 
 ---
 
@@ -55,7 +65,7 @@
 | ~~S2~~ | ~~Matching engine: DB transaction wrapping~~ | P0 | S | — | ✅ DONE |
 | ~~S3~~ | ~~Self-trade prevention fix~~ | P0 | XS | — | ✅ DONE |
 | ~~S4~~ | ~~Payment Service (deposit flow)~~ | P0 | L | — | ✅ DONE — deposit/withdraw + payment_transactions table |
-| ~~S5~~ | ~~PSP webhook endpoints + signature validation~~ | P0 | M | — | ✅ DONE — /webhooks/moonpay + /webhooks/transak + HMAC + idempotency |
+| ~~S5~~ | ~~PSP webhook endpoints + signature validation~~ | P0 | M | — | ✅ DONE — /webhooks/moonpay + HMAC + idempotency |
 | ~~S6~~ | ~~Ledger entries (double-entry bookkeeping)~~ | P0 | M | — | ✅ DONE — Implementado con Balance Service (ledger_entries table) |
 
 ### Notas del sprint
@@ -68,28 +78,29 @@
 
 ## BACKLOG — Próximos sprints
 
-### Sprint 3 — On-chain settlement + auth fiat (estimado)
+### Sprint 3 — On-chain settlement + security (estimado)
 
 | # | Item | P | Esfuerzo | Deps | Notas |
 |---|------|---|----------|------|-------|
 | B1 | Settlement Service + Blockchain TX Manager | P0 | L | W2 | Nonce mgmt, gas estimation, retry logic |
 | B2 | On-chain Event Indexer | P0 | M | W2 | Escuchar eventos de contratos, sync blockchain ↔ DB |
-| B3 | Auth dual (email/Google + SIWE) | P1 | L | — | `user_auth_methods` table, account linking, CSRF |
-| B4 | Frontend AuthModal + FundingModal | P1 | M | B3, S4 | Onboarding dual completo |
-| B5 | Campos faltantes en `users` table | P1 | XS | B3 | `auth_method`, `google_id`, email UNIQUE |
-| B6 | Background Workers (BullMQ) | P1 | M | B1, S5 | Settlement worker, webhook processing worker |
+| B5 | Campos faltantes en `users` table | P1 | XS | — | email UNIQUE constraint |
+| B6 | Background Workers (BullMQ) | P1 | M | B1 | Settlement worker |
+| B7 | Security controls (CHECK constraints, rate limiting) | P1 | M | — | Balance CHECK, rate limiting por endpoint, CSRF en OAuth |
 
-### Sprint 4 — Security, compliance, admin
+### Sprint 4 — Compliance + admin improvements
 
 | # | Item | P | Esfuerzo | Deps | Notas |
 |---|------|---|----------|------|-------|
-| B7 | Security controls (CHECK constraints, rate limiting) | P1 | M | — | Balance CHECK, rate limiting por endpoint, CSRF en OAuth |
-| B8 | Sumsub KYC real | P1 | M | — | Reemplazar mock mode |
+| B8 | Sumsub KYC real (full flow) | P1 | M | — | Webhook exists, complete integration needed |
 | B9 | Geo-blocking middleware | P1 | S | B8 | Requerido por compliance |
-| B10 | Admin Panel + RBAC | P1 | XL | — | Repo separado, market mgmt, KYC review, audit log |
-| B11 | Payment Service: withdrawal flow | P1 | M | S4, S6 | Retiros con approval queue, período retención 14 días |
-| B12 | Chargeback protection | P1 | S | S4 | 3DS obligatorio, clausula ToS |
-| B34 | Intercom Identity Verification (JWT) | P2 | S | B3 | Generar JWT en backend con secret Intercom, pasar al widget. Requiere auth dual activa |
+| B10 | Admin Panel: additional RBAC roles | P1 | M | — | Add Compliance Officer, Finance, Support, Viewer roles |
+| B11 | Admin Panel: Payment/withdrawal approval UI | P1 | M | — | Retiros con approval queue, período retención 14 días |
+| B12 | Chargeback protection | P1 | S | — | 3DS obligatorio, clausula ToS |
+| B34 | Intercom Identity Verification (JWT) | P2 | S | — | Generar JWT en backend con secret Intercom, pasar al widget |
+| B35 | Admin Panel: Audit log | P1 | M | — | Registro inmutable de acciones admin |
+| B36 | market_tags migration docs | P2 | XS | — | Document existing migration |
+| B37 | Mercado Pago webhook secret docs | P2 | XS | — | Document secret configuration |
 
 ### Sprint 5 — UX + testing + launch prep
 
@@ -97,7 +108,7 @@
 |---|------|---|----------|------|-------|
 | B13 | TradingView Charts | P2 | M | — | `lightweight-charts` integration |
 | B14 | WebSocket real-time updates | P2 | M | — | Conectar hooks existentes |
-| B15 | UX flows fiat (onboarding + depósito + errors) | P2 | M | B3, B4 | Flow 1B, Flow 5A, error states |
+| B15 | UX flows fiat (onboarding + depósito + errors) | P2 | M | — | Flow 1B, Flow 5A, error states |
 | B16 | CI/CD Pipeline (GitHub Actions) | P2 | M | — | CI en push, deploy manual |
 | B17 | Vitest setup + unit tests backend | P2 | L | — | Prioridad: balance, webhooks, matching |
 | B18 | E2E Tests (Playwright) | P2 | L | B16 | Fiat onboarding + wallet + trade |
@@ -119,7 +130,6 @@
 | B29 | Analytics segmentación crypto/fiat | P3 | S | Métricas por origen |
 | B30 | Order book click-to-fill | P3 | S | UX improvement |
 | B31 | Mobile responsive testing | P3 | S | Classes existen, falta validar |
-| B32 | Monorepo SDK package | P3 | S | `packages/sdk/` |
 | B33 | BrandProvider + useCurrency (frontend) | P3 | M | Abstracción moneda + multibranding |
 
 ---
@@ -130,13 +140,13 @@
 La audiencia viene de Blaze — entienden apuestas, esperan poder depositar y operar desde el día 1. Si el exchange permite operar sin fondos (bug actual) o si los depósitos no funcionan, no hay producto. Cada día con el matching engine sin balance verification es un riesgo existencial.
 
 ### Por qué Auth dual no está en este sprint
-SIWE funciona. Los early adopters crypto pueden operar. Auth dual (email/Google) es P1 porque desbloquea la audiencia fiat de Blaze, pero sin el flujo de fondos resuelto, no importa cómo se autentiquen — no pueden hacer nada útil.
+SIWE funciona. Los early adopters crypto pueden operar. Auth dual (email/Google) es P1 porque desbloquea la audiencia fiat de Blaze, pero sin el flujo de fondos resuelto, no importa cómo se autentiquen — no pueden hacer nada útil. **UPDATE: Auth dual now DONE.**
 
 ### Por qué tests no están en este sprint
 Zero tests es un riesgo alto pero no un blocker de funcionalidad. Los tests de balance y webhooks son más valiosos cuando el Balance Service y Payment Service existan. Sprint 5 tiene un bloque dedicado a testing.
 
 ### Por qué Admin Panel está en Sprint 4
-No necesitás admin panel para el testnet. Lo necesitás para mainnet cuando haya usuarios reales, KYC reviews, y pagos que aprobar.
+No necesitás admin panel para el testnet. Lo necesitás para mainnet cuando haya usuarios reales, KYC reviews, y pagos que aprobar. **UPDATE: Basic admin panel now DONE (D27). Sprint 4 items are enhancements (additional roles, audit log, payment approval).**
 
 ---
 
@@ -145,6 +155,6 @@ No necesitás admin panel para el testnet. Lo necesitás para mainnet cuando hay
 | Sprint | Outcome esperado |
 |--------|-----------------|
 | Sprint 2 (actual) | Un usuario puede depositar crypto, crear órdenes con balance real, y cada movimiento queda en el ledger |
-| Sprint 3 | Trades se liquidan on-chain. Usuarios fiat pueden registrarse con email/Google |
-| Sprint 4 | KYC real, geo-blocking, admin puede gestionar mercados y revisar KYC |
+| Sprint 3 | Trades se liquidan on-chain. Security controls implementados |
+| Sprint 4 | KYC real, geo-blocking, admin enhancements (more roles, audit log, payment approval) |
 | Sprint 5 | Plataforma lista para beta cerrada con charts, real-time, y test coverage mínimo |
